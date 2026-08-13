@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#120b09">
+<title>BFDLink — Ember theme preview</title>
+<meta name="description" content="Unofficial quick links and shift calendar for Baytown Fire Department.">
+<!-- Open Graph / link-preview tags. The address bar URL can't change, but
+     these control what a chat app SHOWS when the link is shared — apps that
+     build a preview card (iMessage, WhatsApp, Slack, Discord, Signal) read
+     these instead of just printing the raw URL. Plain-text SMS is the one
+     place this can't help: there's no card to build, so the literal link has
+     to appear somewhere for it to be tappable at all. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BFDLink">
+<meta property="og:title" content="BFDLink">
+<meta property="og:description" content="Unofficial quick links and shift calendar for Baytown Fire Department.">
+<meta property="og:image" content="https://bfdlink.halfedge.dev/icon-512.png">
+<meta property="og:url" content="https://bfdlink.halfedge.dev/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="BFDLink">
+<meta name="twitter:description" content="Unofficial quick links and shift calendar for Baytown Fire Department.">
+<meta name="twitter:image" content="https://bfdlink.halfedge.dev/icon-512.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BFDLink">
+<style>
+  /* ---------- THEME PREVIEW: Ember ----------
+     Warm, fire-forward palette: near-black warm charcoal base (not pure
+     black — a hint of red in the shadows) with an amber primary accent.
+     Tiles no longer share one flat accent per section — see tileAccent()
+     below — they cycle through a warm spread (red/orange/amber/gold) so the
+     grid reads with more variety at a glance, while still keeping the muted,
+     low-alpha wash the dark theme needs to avoid turning muddy. */
+  :root{
+    --bg:#120b09; --panel:#1e1310; --panel2:#281a15; --line:#3d2a22;
+    --txt:#f5ede8; --dim:#b8a196; --faint:#7a6259;
+    --gold:#f0a92b; --a:#e0483a; --b:#3f93e0; --c:#43b06a;
+    --info:#e0873a;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+    overscroll-behavior-y:contain;
+  }
+  /* bottom padding clears the floating share button */
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px 96px}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky; top:0; z-index:20; background:var(--bg);
+    padding:calc(env(safe-area-inset-top) + 12px) 14px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  .hdr-in{max-width:760px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .brandmark{width:26px;height:26px;flex:0 0 auto;border-radius:7px;display:block}
+  .brand h1{font-size:17px;font-weight:700;letter-spacing:.2px;margin:0}
+  .infobtn{
+    margin-left:auto;flex:0 0 auto;
+    width:28px;height:28px;border-radius:50%;
+    background:none;border:1.6px solid var(--info);color:var(--info);
+    font:italic 700 15px/1 Georgia,"Times New Roman",serif;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    padding:0 0 1px 0;
+  }
+  .infobtn:active{background:rgba(224,135,58,.16)}
+
+  /* shift bar */
+  .shiftbar{
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--dim);
+    border-radius:10px;padding:9px 12px;margin-bottom:9px;
+    color:var(--txt);font:inherit;text-align:left;cursor:pointer;
+  }
+  .shiftbar .lt{font-size:24px;font-weight:800;line-height:1;width:28px;text-align:center}
+  .shiftbar .meta{flex:1;min-width:0}
+  .shiftbar .d1{font-size:14.5px;font-weight:600}
+  .shiftbar .d2{font-size:12.5px;color:var(--dim)}
+  .shiftbar .chev{color:var(--faint);font-size:12px;transition:transform .18s}
+  .shiftbar.open .chev{transform:rotate(180deg)}
+  .sA{border-left-color:var(--a)} .sA .lt{color:var(--a)}
+  .sB{border-left-color:var(--b)} .sB .lt{color:var(--b)}
+  .sC{border-left-color:var(--c)} .sC .lt{color:var(--c)}
+
+  /* search */
+  .search{position:relative}
+  .search input{
+    width:100%;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:11px 36px 11px 36px;color:var(--txt);font-size:16px;
+    outline:none;
+  }
+  .search input:focus{border-color:var(--faint)}
+  .search .mag{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--faint)}
+  .search .clr{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    background:none;border:0;color:var(--faint);font-size:20px;padding:4px 8px;cursor:pointer;display:none;
+  }
+  .search input:not(:placeholder-shown) ~ .clr{display:block}
+
+  /* ---------- calendar ---------- */
+  #cal{display:none;margin-bottom:9px}
+  #cal.show{display:block}
+  .calbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .calnav{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .calnav button{
+    background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;width:32px;height:30px;font-size:15px;cursor:pointer;
+  }
+  .calnav .mo{flex:1;text-align:center;font-size:13.5px;font-weight:600}
+  .grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .dow{font-size:10px;color:var(--faint);text-align:center;padding-bottom:3px;font-weight:600}
+  .day{
+    aspect-ratio:1/1.22;border-radius:7px;background:var(--panel2);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    font-size:11.5px;
+  }
+  .day.pad{background:transparent}
+  .day .n{color:var(--dim);font-size:10.5px;line-height:1}
+  .day .s{font-weight:800;font-size:13px;line-height:1}
+  .day.a .s{color:var(--a)} .day.b .s{color:var(--b)} .day.c .s{color:var(--c)}
+  .day.today{outline:2px solid var(--txt);outline-offset:-2px}
+  .day.today .n{color:var(--txt);font-weight:700}
+  .callegend{display:flex;gap:14px;justify-content:center;margin-top:9px;font-size:11px;color:var(--dim)}
+  .callegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+
+  /* ---------- link sections ----------
+     Each section carries an accent as an "r,g,b" triple in --acc (set from
+     links.js). It tints the heading, a faint wash on the tiles, and the
+     borders. Kept low-alpha on purpose — on a dark theme anything stronger
+     turns muddy fast. */
+  .sec{--acc:95,113,137}
+  h2{
+    font-size:12.5px;letter-spacing:1.1px;text-transform:uppercase;
+    color:rgb(var(--acc));
+    margin:22px 0 9px;font-weight:700;display:flex;align-items:center;gap:7px;
+  }
+  h2 svg{width:14px;height:14px;opacity:.9}
+
+  /* Square-ish cards, name only — members know what their own tools are, so
+     a subheading under every tile explains the obvious at the cost of scroll
+     length. Same breakpoints as Pearland Fire Link, whose sizing pass found
+     that more, smaller columns beats fewer larger ones: a square card is
+     taller per row than a one-line tile, so 2-up actually scrolled LONGER
+     than the old single-column list.
+
+     Verified at 375/420/500/620/740/1200/1600px with Baytown's longer
+     municipal link names ("Vehicle / Property Damage", "Employee Self
+     Service"): the 3-line clamp holds them at 82px tile width without
+     truncating, and no name collides with the badge band.
+
+     >>> If you re-check that, DON'T test with scrollHeight > clientHeight.
+     Sub-pixel line-height rounding (17.1px) makes scrollHeight overshoot by
+     ~1px per line, so that test reports every tile as clipped and is
+     worthless. Compare against the unclamped height instead:
+       [...document.querySelectorAll('.tile .nmtxt')].filter(n=>{
+         const c=n.getBoundingClientRect().height;
+         n.style.webkitLineClamp='unset';
+         const f=n.getBoundingClientRect().height;
+         n.style.webkitLineClamp='';
+         return f > c + 3;
+       }).map(n=>n.textContent)                                          */
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  @media(min-width:480px){.tiles{grid-template-columns:repeat(5,1fr)}}
+  @media(min-width:680px){.tiles{grid-template-columns:repeat(6,1fr)}}
+
+  /* ---------- desktop / MDT ----------
+     A real dashboard rather than a widened single column: left rail carries
+     the shift-of-the-day card and an always-open calendar, right side is the
+     links directory. #dsk-today is a second instance of the header's own
+     .shiftbar (same look — the big colored shift letter is what people
+     actually scan for), so the header's copy is hidden at this breakpoint
+     rather than duplicated.
+
+     PHASE 2/3 land in this rail: the maintenance-week strip below the Today
+     card, and the manning panel below that. Building the two-column layout
+     now is what lets manning be an always-visible rail panel on desktop and
+     a tile+popup on a phone without writing that UI twice. */
+  #dsk-today{display:none}
+  .shiftbar-static{cursor:default}
+
+  @media(min-width:1200px){
+    .wrap{
+      max-width:1500px;display:grid;
+      grid-template-columns:420px 1fr;column-gap:28px;align-items:start;
+    }
+    .icol-left{grid-column:1}
+    .icol-right{grid-column:2}
+    .wrap > footer{grid-column:1/-1}
+
+    .hdr-in{
+      max-width:1500px;margin:0 auto;
+      display:flex;align-items:center;column-gap:16px;
+    }
+    /* .brand's own box disappears (display:contents) so its children — the
+       logo, title, info button — become direct flex items of .hdr-in instead,
+       sitting alongside .search (which stays exactly where it is in the DOM,
+       a later sibling of .brand, so mobile's stacking order is untouched
+       below this breakpoint). `order` then sequences all four into one row:
+       logo, title, search, info. */
+    .brand{display:contents}
+    .brandmark{order:1}
+    .brand h1{order:2}
+    .search{order:3;flex:1;max-width:420px;margin-left:0}
+    /* search's flex:1 stops growing at its own max-width — the leftover row
+       space beyond that has to go somewhere, or the info button strands
+       right after search with a dead gap to the true right edge. */
+    .infobtn{order:4;margin-left:auto}
+    #shiftbar{display:none}
+
+    #cal{display:block !important;margin-bottom:14px}
+    #dsk-today{display:flex;margin-bottom:14px}
+
+    /* The right column is roughly half the old full-page width, so a higher
+       column count still means fewer px per tile — smaller tiles, bigger
+       label text, so they stay readable at a glance from across the room. */
+    .tiles{grid-template-columns:repeat(8,1fr)}
+    /* The .icol-right prefix (not just .tile .nm) is load-bearing — the base
+       .tile .nm{font-size:12px} rule sits later in this file, and at equal
+       specificity source order would win over this media query, silently
+       losing the override. Higher specificity beats that regardless of
+       source order. */
+    .icol-right .tile .nm{font-size:15px}
+    .icol-right a.tile{aspect-ratio:1/.65}
+  }
+  @media(min-width:1600px){
+    .wrap{max-width:1700px}
+    .hdr-in{max-width:1700px;margin:0 auto}
+    .tiles{grid-template-columns:repeat(9,1fr)}
+  }
+
+  /* ---------- tiles ---------- */
+  .tilewrap{position:relative}
+  .star{
+    position:absolute;right:1px;top:1px;z-index:2;
+    background:none;border:0;color:var(--faint);font-size:16px;line-height:1;
+    padding:3px;cursor:pointer;border-radius:8px;font-family:inherit;
+  }
+  /* Tap target stays generous (~38x38) via invisible hit-slop, independent of
+     the visible box — so the star reads big and clickable without its actual
+     footprint crowding the centered tile name next to it. */
+  .star::before{content:"";position:absolute;inset:-7px}
+  .star:active{background:rgba(255,255,255,.1)}
+  .star.on{color:var(--gold)}
+
+  /* The name sits at the true visual center of the tile, always — a badge is
+     pinned to the bottom band instead of sharing the centering flex, so tiles
+     with a badge and tiles without still line their names up at the same
+     height. */
+  a.tile{
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    aspect-ratio:1/.92;text-align:center;text-decoration:none;color:var(--txt);
+    background:linear-gradient(rgba(var(--acc),.075),rgba(var(--acc),.075)),var(--panel);
+    border:1px solid rgba(var(--acc),.20);border-radius:10px;
+    /* extra top padding shifts the centered name's midpoint down a few px,
+       clear of the star's corner, without touching the bottom badge band */
+    padding:13px 4px 6px;transition:background .12s,border-color .12s;
+  }
+  a.tile:active{background:linear-gradient(rgba(var(--acc),.17),rgba(var(--acc),.17)),var(--panel)}
+  @media(hover:hover){
+    a.tile:hover{
+      border-color:rgba(var(--acc),.42);
+      background:linear-gradient(rgba(var(--acc),.14),rgba(var(--acc),.14)),var(--panel);
+    }
+  }
+  /* City-network tiles copy instead of navigating, so they are visibly a
+     different kind of thing — dashed border says "this won't open." */
+  a.tile.netonly{border-style:dashed}
+  .tile .nm{font-size:12px;font-weight:600;line-height:1.14;width:100%}
+  /* long names get 3 lines before truncating, so nothing reads blank */
+  .tile .nmtxt{
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    overflow:hidden;width:100%;
+    /* A name with no spaces can't wrap at all, which lets that tile's grid
+       track stretch wider than its siblings to fit it — breaking the uniform
+       tile size across the row. This lets it break mid-word as a last resort
+       so every tile stays the same size regardless of the name. */
+    overflow-wrap:anywhere;word-break:break-word;
+  }
+  .tile .tags{
+    position:absolute;left:4px;right:4px;bottom:3px;z-index:1;
+    display:flex;justify-content:center;flex-wrap:wrap;gap:3px;
+  }
+  /* Static description is hidden — it was restating what the tile already
+     says. It stays in the DOM because search reads it. */
+  .tile .ds{display:none}
+
+  .badge{
+    font-size:7.5px;letter-spacing:.3px;text-transform:uppercase;font-weight:700;
+    padding:1.5px 5px;border-radius:4px;white-space:nowrap;
+  }
+  .b-net{background:#33261a;color:#e0a04a}
+  .b-app{background:#12303a;color:#4ab6e0}
+  .b-web{background:#241b3a;color:#a98ef0}
+  .b-store{background:#1b3226;color:#5fc48c}
+
+  .empty{text-align:center;color:var(--faint);font-size:14px;padding:40px 0}
+
+  /* ---------- share button ----------
+     Installed PWAs have no address bar, so there is no other way to get the
+     link out to someone. */
+  .fab{
+    position:fixed; right:16px; z-index:30;
+    bottom:calc(env(safe-area-inset-bottom) + 16px);
+    width:54px; height:54px; border-radius:50%;
+    background:var(--gold); border:0; color:#20160a; cursor:pointer;
+    box-shadow:0 6px 18px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .fab:active{transform:scale(.94)}
+  .fab svg{width:23px;height:23px}
+
+  .toast{
+    position:fixed; left:50%; transform:translateX(-50%) translateY(14px);
+    bottom:calc(env(safe-area-inset-bottom) + 82px); z-index:40;
+    background:#e9eef5; color:#0b111c; font-size:13.5px; font-weight:600;
+    padding:9px 16px; border-radius:20px; opacity:0; pointer-events:none;
+    transition:opacity .18s, transform .18s; max-width:88vw; text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ---------- sheets ---------- */
+  .sheetwrap{
+    position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.6);
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:14px; padding-bottom:calc(env(safe-area-inset-bottom) + 14px);
+  }
+  .sheetwrap[hidden]{display:none}
+  .isheet{
+    background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:18px 18px 15px; max-width:420px; width:100%;
+  }
+  .isheet .top{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+  .isheet img{width:46px;height:46px;border-radius:11px;flex:0 0 auto}
+  .isheet h3{margin:0;font-size:16.5px;font-weight:700}
+  .isheet .sub{font-size:12.5px;color:var(--dim);margin-top:2px}
+  .isheet ol{margin:0 0 14px;padding-left:20px;color:#cfd8e2;font-size:14px;line-height:1.75}
+  .isheet ol b{color:var(--txt)}
+  .isheet .ic{display:inline-flex;vertical-align:-4px;margin:0 2px;width:17px;height:17px;color:#7fb0ff}
+  .isheet .btns{display:flex;gap:9px}
+  .isheet button{
+    flex:1; padding:12px 0; border-radius:11px; font:600 15px inherit;
+    font-family:inherit; cursor:pointer; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt);
+  }
+  .isheet button.primary{background:var(--gold);border-color:var(--gold);color:#20160a;font-weight:700}
+
+  .faq{max-height:82vh;display:flex;flex-direction:column;padding:0}
+  .faqhead{
+    display:flex;align-items:center;gap:10px;flex:0 0 auto;
+    padding:15px 16px 12px;border-bottom:1px solid var(--line);
+  }
+  .faqhead h3{margin:0;font-size:16px;font-weight:700;flex:1}
+  .faqhead .ic{width:22px;height:22px;color:var(--info);flex:0 0 auto}
+  .faqhead button{
+    background:none;border:0;color:var(--dim);font-size:24px;line-height:1;
+    padding:2px 6px;cursor:pointer;font-family:inherit;
+  }
+  .faqbody{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 16px 16px}
+  .faqbody h4{
+    font-size:10.5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+    color:var(--info);margin:18px 0 8px;
+  }
+  .faqbody h4:first-child{margin-top:14px}
+  .faqbody dl{margin:0}
+  .faqbody dt{font-size:13.5px;font-weight:650;color:var(--txt);margin-top:11px}
+  .faqbody dt:first-child{margin-top:0}
+  .faqbody dd{margin:3px 0 0;font-size:12.5px;color:var(--dim);line-height:1.55}
+  .faqbody dd b{color:#c3ccd6}
+  .faqbody .tag{
+    display:inline-block;font-size:8px;letter-spacing:.3px;text-transform:uppercase;
+    font-weight:700;padding:1px 5px;border-radius:4px;vertical-align:1px;
+  }
+  .faqfoot{
+    flex:0 0 auto;border-top:1px solid var(--line);padding:11px 16px;
+    font-size:11.5px;color:var(--faint);line-height:1.55;
+  }
+  .faqfoot a{color:var(--dim)}
+
+  /* ---------- footer ---------- */
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--faint);line-height:1.6}
+  footer a{color:var(--dim)}
+  footer .disc{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:11px 13px;margin-bottom:12px;color:var(--dim);font-size:11.5px;
+  }
+  footer .disc b{color:var(--txt)}
+
+  /* ---------- THEME PREVIEW banner ---------- */
+  .previewbar{
+    background:var(--gold); color:#20160a; font-weight:700; font-size:12.5px;
+    text-align:center; padding:7px 10px; position:sticky; top:0; z-index:25;
+  }
+  .previewbar a{color:#20160a; text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="previewbar">THEME PREVIEW — Ember · not the live site ·
+  <a href="preview-harbor.html">see Harbor instead</a> ·
+  <a href="index.html">back to live</a>
+</div>
+
+<header>
+  <div class="hdr-in">
+    <div class="brand">
+      <img src="icon-192.png" alt="" class="brandmark">
+      <h1>BFDLink</h1>
+      <button class="infobtn" id="infobtn" type="button"
+              aria-label="Tips and known limitations">i</button>
+    </div>
+
+    <button class="shiftbar" id="shiftbar" aria-expanded="false">
+      <span class="lt" id="sh-lt">–</span>
+      <span class="meta">
+        <span class="d1" id="sh-d1">Loading…</span><br>
+        <span class="d2" id="sh-d2"></span>
+      </span>
+      <span class="chev">▼</span>
+    </button>
+
+    <div class="search">
+      <span class="mag">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      </span>
+      <input id="q" type="search" placeholder="Search links…" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="clr" id="clr" aria-label="Clear">×</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="icol-left">
+    <div class="shiftbar shiftbar-static" id="dsk-today">
+      <span class="lt" id="dsk-lt">–</span>
+      <span class="meta">
+        <span class="d1" id="dsk-d1"></span><br>
+        <span class="d2" id="dsk-d2"></span>
+      </span>
+    </div>
+
+    <!-- PHASE 2: maintenance-week strip goes here -->
+    <!-- PHASE 3: manning panel goes here -->
+
+    <div id="cal">
+      <div class="calbox">
+        <div class="calnav">
+          <button id="prev" aria-label="Previous month">‹</button>
+          <div class="mo" id="molabel"></div>
+          <button id="next" aria-label="Next month">›</button>
+        </div>
+        <div class="grid7" id="dows"></div>
+        <div class="grid7" id="days"></div>
+        <div class="callegend">
+          <span><i style="background:var(--a)"></i>A</span>
+          <span><i style="background:var(--b)"></i>B</span>
+          <span><i style="background:var(--c)"></i>C</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="icol-right" id="out"></main>
+
+  <footer>
+    <div class="disc">
+      <b>Unofficial.</b> Not created, endorsed, or maintained by the City of Baytown or
+      Baytown Fire Department. Every tile links out to the official source — nothing is
+      hosted or copied here. Always verify protocols and policy against the authoritative
+      source before acting on them.
+    </div>
+    Links last reviewed <span id="lastup"></span>.<br>
+    Half Edge Dev — <a id="report" href="#">report a bad link</a>.<br>
+    <a id="howto" href="#">Add to home screen</a>
+  </footer>
+</div>
+
+<button class="fab" id="fab" aria-label="Share this app">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+    <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>
+  </svg>
+</button>
+
+<div class="toast" id="toast"></div>
+
+<div class="sheetwrap" id="faqwrap" hidden>
+  <div class="isheet faq" role="dialog" aria-modal="true" aria-labelledby="faq-h">
+    <div class="faqhead">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>
+      </svg>
+      <h3 id="faq-h">Tips &amp; Known Limits</h3>
+      <button id="faq-x" type="button" aria-label="Close">×</button>
+    </div>
+
+    <div class="faqbody">
+      <h4>Helpful tips</h4>
+      <dl>
+        <dt>Install it to your home screen</dt>
+        <dd>Runs full screen with no address bar, and the app itself works with no
+            signal. See <b>Add to home screen</b> at the bottom of the page.</dd>
+
+        <dt>Star what you use</dt>
+        <dd>Tap the ☆ on any tile to pin it to a <b>Favorites</b> row at the top.
+            Saved on your phone only — everyone's is their own.</dd>
+
+        <dt>Tap the shift bar</dt>
+        <dd>The date bar at the top opens a month calendar showing the shift letter
+            for every day.</dd>
+      </dl>
+
+      <h4>Known limits</h4>
+      <dl>
+        <dt><span class="tag b-net">City Network</span> tiles copy instead of opening</dt>
+        <dd>Those pages only exist inside the city network, and there's no station
+            WiFi — they can't load on a phone on any connection. Tapping one copies
+            the address so you can paste it on a city computer.</dd>
+
+        <dt><span class="tag b-store">Store</span> tiles land on the store page</dt>
+        <dd>They open the App Store / Play Store listing. Tap <b>Open</b> there to
+            launch the app. A web page can't press that button for you.</dd>
+
+        <dt><span class="tag b-web">Web Only</span> tiles won't open the app</dt>
+        <dd>Pulsara opens the website even if you have the app installed. That's on
+            Pulsara's end — no fix available.</dd>
+
+        <dt>Search only covers tile names</dt>
+        <dd>It matches link names and descriptions, <b>not the text inside pages</b>.
+            No typo tolerance either.</dd>
+
+        <dt>Only the app works offline</dt>
+        <dd>The tiles and calendar stay available with no signal. The pages they link
+            to still need a connection.</dd>
+      </dl>
+
+      <h4>Not built yet</h4>
+      <dl>
+        <dt>Daily manning in-app</dt>
+        <dd>Right now the manning tile just opens the sheet. Pulling the current
+            day's manning into the app needs a department sign-off first.</dd>
+
+        <dt>Monthly maintenance schedule</dt>
+        <dd>Policy 1100.3 as a real page — what's assigned, which days fall on your
+            shift. Coming next.</dd>
+
+        <dt>Opening apps directly</dt>
+        <dd>App tiles go to the store listing for now. Each one gets switched to
+            open-the-app-directly only after it's tested on a real phone.</dd>
+      </dl>
+    </div>
+
+    <div class="faqfoot">
+      <b>Unofficial.</b> Every tile links out to the official source — nothing is
+      hosted or copied here. Something wrong or missing?
+      <a id="faq-report" href="#">Send it over</a>.
+    </div>
+  </div>
+</div>
+
+<div class="sheetwrap" id="sheetwrap" hidden>
+  <div class="isheet" role="dialog" aria-modal="true" aria-labelledby="ish-h">
+    <div class="top">
+      <img src="icon-192.png" alt="">
+      <div>
+        <h3 id="ish-h">Add to your home screen</h3>
+        <div class="sub">Opens like an app — full screen, and works with no signal.</div>
+      </div>
+    </div>
+    <ol id="ish-steps"></ol>
+    <div class="btns">
+      <button id="ish-install" class="primary" hidden>Install</button>
+      <button id="ish-close">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script src="shift.js"></script>
+<script src="links.js"></script>
+<script>
+/* ---------- header shift bar ---------- */
+const now = new Date();
+const TY = now.getFullYear(), TM = now.getMonth(), TD = now.getDate();
+(function renderShiftBar(){
+  const s = shiftFor(TY, TM, TD);
+  const d1text = now.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
+
+  // find the next day this platoon comes back on
+  let off = 1;
+  while (off < 40) {
+    const n = new Date(TY, TM, TD + off);
+    const ns = shiftFor(n.getFullYear(), n.getMonth(), n.getDate());
+    if (ns.letter === s.letter && ns.dayOf === 1) break;
+    off++;
+  }
+  const back = new Date(TY, TM, TD + off);
+  const d2text = `${s.letter} shift · day ${s.dayOf} of 2 · back on ` +
+    back.toLocaleDateString(undefined, {weekday:'short', month:'numeric', day:'numeric'});
+
+  // The header shift bar (mobile + tablet) and the desktop-only Today card
+  // show the exact same facts — same computation, written to two sets of
+  // elements. The big colored shift letter belongs front and center on
+  // desktop too, not just mobile.
+  [['shiftbar','sh-lt','sh-d1','sh-d2'], ['dsk-today','dsk-lt','dsk-d1','dsk-d2']].forEach(
+    ([barId, ltId, d1Id, d2Id]) => {
+      document.getElementById(barId).classList.add('s' + s.letter);
+      document.getElementById(ltId).textContent = s.letter;
+      document.getElementById(d1Id).textContent = d1text;
+      document.getElementById(d2Id).textContent = d2text;
+    }
+  );
+})();
+
+/* ---------- calendar ---------- */
+let calY = TY, calM = TM;
+const MON = ['January','February','March','April','May','June',
+             'July','August','September','October','November','December'];
+
+document.getElementById('dows').innerHTML =
+  ['S','M','T','W','T','F','S'].map(d => `<div class="dow">${d}</div>`).join('');
+
+function drawCal(){
+  document.getElementById('molabel').textContent = MON[calM] + ' ' + calY;
+  const first = new Date(calY, calM, 1).getDay();
+  const len   = new Date(calY, calM + 1, 0).getDate();
+  let html = '';
+  for (let i = 0; i < first; i++) html += '<div class="day pad"></div>';
+  for (let d = 1; d <= len; d++){
+    const s = shiftFor(calY, calM, d);
+    const isToday = (d === TD && calM === TM && calY === TY);
+    html += `<div class="day ${s.letter.toLowerCase()}${isToday ? ' today' : ''}">
+               <span class="n">${d}</span><span class="s">${s.letter}</span>
+             </div>`;
+  }
+  document.getElementById('days').innerHTML = html;
+}
+drawCal();
+
+document.getElementById('prev').onclick = () => {
+  if (--calM < 0){ calM = 11; calY--; } drawCal();
+};
+document.getElementById('next').onclick = () => {
+  if (++calM > 11){ calM = 0; calY++; } drawCal();
+};
+document.getElementById('shiftbar').onclick = function(){
+  const c = document.getElementById('cal');
+  const open = c.classList.toggle('show');
+  this.classList.toggle('open', open);
+  this.setAttribute('aria-expanded', open);
+};
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+const UA = navigator.userAgent;
+const IS_IOS = /iPad|iPhone|iPod/.test(UA) ||
+               (UA.includes('Mac') && 'ontouchend' in document);
+const IS_ANDROID = /Android/.test(UA);
+
+function urlFor(it){
+  if (IS_IOS && it.ios) return it.ios;
+  if (IS_ANDROID && it.android) return it.android;
+  return it.url;
+}
+
+const ICONS = {
+  siren:'<path d="M12 3a5 5 0 0 0-5 5v5h10V8a5 5 0 0 0-5-5z"/><path d="M4 18h16v3H4z"/><path d="M12 3V1"/>',
+  badge:'<path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>',
+  shield:'<path d="M12 2l8 4v6c0 5.5-3.5 9-8 10-4.5-1-8-4.5-8-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  flag:'<path d="M4 22V3"/><path d="M4 4h13l-2 4 2 4H4"/>',
+  heart:'<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21.5l8.8-8.8a5 5 0 0 0 0-7.1z"/>',
+  map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/>',
+  star:'<path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.4l6.1-.8z"/>',
+  clipboard:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9z"/><path d="M9 11h6"/><path d="M9 15h4"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'
+};
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ---------- THEME PREVIEW: per-tile color cycling ----------
+   The live site gives every tile in a section the same flat accent (set on
+   .sec, inherited down). This preview gives each TILE its own accent instead,
+   picked by hashing the link's name into a fixed palette — so re-renders
+   (search, favorites) don't make tiles flicker to a different color, but the
+   grid itself shows more variety than one hue per section. Section headings
+   still use the section's own accent, so categories stay visually grouped;
+   only the tiles themselves pick up the wider spread. */
+const TILE_PALETTE = [
+  '224,72,58',   // ember red
+  '224,135,58',  // burnt orange
+  '224,169,43',  // amber
+  '208,140,40',  // deep gold
+  '196,90,50',   // rust
+  '224,100,90',  // coral
+];
+function tileAccent(name){
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return TILE_PALETTE[h % TILE_PALETTE.length];
+}
+
+function tileHTML(it){
+  const badges =
+    (it.intranet ? '<span class="badge b-net">City Network</span>' : '') +
+    (it.app      ? '<span class="badge b-app">App</span>'          : '') +
+    (it.webOnly  ? '<span class="badge b-web">Web Only</span>'     : '') +
+    (it.store    ? '<span class="badge b-store">Store</span>'      : '');
+  const href = urlFor(it);
+  // local pages stay in the app; everything else opens out
+  const local = !/^(https?:|tel:)/.test(href);
+  const ext  = (href.startsWith('tel:') || local) ? '' : ' target="_blank" rel="noopener noreferrer"';
+  // Platform-specific scheme wins when set (e.g. an Android intent:// URL
+  // that would be nonsense on iOS); falls back to the shared "scheme" field.
+  const schVal = (IS_ANDROID && it.androidScheme) || (IS_IOS && it.iosScheme) || it.scheme;
+  const sch  = schVal ? ` data-scheme="${esc(schVal)}"` : '';
+  const net  = it.intranet ? ' netonly' : '';
+  const fav  = isFav(it.name);
+  const tileAcc = ` style="--acc:${tileAccent(it.name)}"`;
+  // The star sits OUTSIDE the anchor so it is a real button, not a link
+  // nested inside a link.
+  return `<div class="tilewrap">
+    <a class="tile${net}" href="${esc(href)}"${ext}${sch}${it.intranet ? ' data-intranet="1"' : ''}${tileAcc}>
+      <span class="nm"><span class="nmtxt">${esc(it.name)}</span></span>
+      ${badges ? `<span class="tags">${badges}</span>` : ''}
+      <span class="ds">${esc(it.desc || '')}</span>
+    </a>
+    <button type="button" class="star${fav ? ' on' : ''}" data-fav="${esc(it.name)}"
+            aria-label="${fav ? 'Remove from' : 'Add to'} favorites"
+            aria-pressed="${fav}">${fav ? '★' : '☆'}</button>
+  </div>`;
+}
+
+/* ---------- favorites ---------- */
+const FAV_KEY = 'bfd-favs';
+function favs(){
+  try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch (e) { return []; }
+}
+function isFav(name){ return favs().indexOf(name) !== -1; }
+function toggleFav(name){
+  const f = favs(), i = f.indexOf(name);
+  if (i === -1) f.push(name); else f.splice(i, 1);
+  localStorage.setItem(FAV_KEY, JSON.stringify(f));
+}
+function allItems(){
+  return LINKS.reduce((a, s) => a.concat(s.items), []);
+}
+
+function render(filter){
+  const f = (filter || '').trim().toLowerCase();
+  const out = document.getElementById('out');
+  let html = '', hits = 0;
+
+  /* Favorites ride at the top, but only when you aren't searching — during a
+     search the results should be the whole answer. */
+  if (!f){
+    const items = favs()
+      .map(n => allItems().find(i => i.name === n))
+      .filter(Boolean);
+    if (items.length){
+      html += `<section class="sec" style="--acc:240,169,43">
+                 <h2><svg viewBox="0 0 24 24" fill="currentColor">${ICONS.star}</svg>Favorites</h2>
+                 <div class="tiles">${items.map(tileHTML).join('')}</div>
+               </section>`;
+    }
+  }
+
+  LINKS.forEach(sec => {
+    const items = f
+      ? sec.items.filter(it =>
+          (it.name + ' ' + (it.desc || '') + ' ' + sec.category).toLowerCase().includes(f))
+      : sec.items;
+    if (!items.length) return;
+    hits += items.length;
+    const ic = ICONS[sec.icon] || ICONS.flag;
+    html += `<section class="sec"${sec.accent ? ` style="--acc:${sec.accent}"` : ''}>
+               <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ic}</svg>
+               ${sec.category}</h2>
+               <div class="tiles">${items.map(tileHTML).join('')}</div>
+             </section>`;
+  });
+
+  out.innerHTML = hits ? html : '<div class="empty">No links match that.</div>';
+}
+render();
+
+/* star taps toggle a favorite and re-render, keeping the search box as-is */
+document.addEventListener('click', e => {
+  const s = e.target.closest('.star');
+  if (!s) return;
+  e.preventDefault();
+  toggleFav(s.dataset.fav);
+  render(document.getElementById('q').value);
+});
+
+/* search */
+const q = document.getElementById('q');
+q.addEventListener('input', () => render(q.value));
+document.getElementById('clr').onclick = () => { q.value = ''; render(); q.focus(); };
+
+/* ---------- city-network tiles ----------
+   Baytown has no station WiFi, so these pages cannot load on a phone on any
+   connection. Navigating would guarantee an error page, which reads as "the
+   app is broken." Copying the address is the only genuinely useful action:
+   paste it on a city computer.
+
+   This listener is registered BEFORE the scheme handler below on purpose —
+   an intranet tile never has a scheme, but if one were ever added, stopping
+   propagation here keeps the two from both firing on the same tap. */
+document.addEventListener('click', e => {
+  const a = e.target.closest('a.tile[data-intranet]');
+  if (!a) return;
+  e.preventDefault();
+  e.stopPropagation();
+  copyText(a.getAttribute('href')).then(ok => {
+    toast(ok ? 'Address copied — open it on a city computer'
+             : 'Could not copy. Long-press the tile to copy the link.');
+  });
+});
+
+/* Two ways to copy, because neither works everywhere.
+   navigator.clipboard is the modern one but it refuses outside a secure
+   context and without transient user activation. execCommand('copy') is
+   deprecated but has neither restriction, so it covers the gap — notably
+   older iOS Safari. Returns a promise<bool> so callers report honestly
+   rather than claiming success blind. */
+function copyText(text){
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).then(() => true, () => legacyCopy(text));
+  }
+  return Promise.resolve(legacyCopy(text));
+}
+function legacyCopy(text){
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    // Off-screen but still focusable — display:none or visibility:hidden
+    // would make select() a no-op and the copy would silently do nothing.
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);   // iOS needs the explicit range
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (err) { return false; }
+}
+
+/* Try to open an installed app first, fall back to the store/web URL if
+   nothing handles the scheme within a beat. No tile ships with a scheme yet —
+   see the note at the top of links.js. */
+document.addEventListener('click', e => {
+  const a = e.target.closest('a.tile[data-scheme]');
+  if (!a || !(IS_IOS || IS_ANDROID)) return;
+  e.preventDefault();
+  const fallback = a.getAttribute('href');
+  const t = setTimeout(() => { window.location.href = fallback; }, 900);
+  document.addEventListener('visibilitychange', function once(){
+    if (document.hidden) { clearTimeout(t); document.removeEventListener('visibilitychange', once); }
+  });
+  window.location.href = a.dataset.scheme;
+});
+
+/* footer */
+document.getElementById('lastup').textContent =
+  new Date(LAST_UPDATED + 'T12:00:00').toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric'});
+const REPORT_HREF =
+  'mailto:nicholas.matula@gmail.com?subject=' +
+  encodeURIComponent('BFDLink — broken link') +
+  '&body=' + encodeURIComponent('Which link:\n\nWhat happened:\n\n');
+document.getElementById('report').href = REPORT_HREF;
+document.getElementById('faq-report').href = REPORT_HREF;
+
+/* ---------- FAQ sheet ---------- */
+const faqWrap = document.getElementById('faqwrap');
+function openFaq(){
+  faqWrap.hidden = false;
+  faqWrap.querySelector('.faqbody').scrollTop = 0;   // always start at the top
+}
+function closeFaq(){ faqWrap.hidden = true; }
+document.getElementById('infobtn').onclick = openFaq;
+document.getElementById('faq-x').onclick   = closeFaq;
+faqWrap.onclick = e => { if (e.target === faqWrap) closeFaq(); };   // backdrop tap
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !faqWrap.hidden) closeFaq();
+});
+
+/* ============================================================
+   SHARE
+   Installed PWAs have no address bar, so this is the only way to pass the
+   link on. Uses the native share sheet where it exists, falls back to
+   copying.
+   ============================================================ */
+const APP_URL = new URL('./', location.href).href;
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+document.getElementById('fab').onclick = async () => {
+  const data = { title: 'BFDLink', text: 'Baytown FD quick links', url: APP_URL };
+  if (navigator.share){
+    try { await navigator.share(data); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }   // user cancelled
+  }
+  toast(await copyText(APP_URL) ? 'Link copied' : APP_URL);
+};
+
+/* ============================================================
+   INSTALL SHEET
+   Shown once to anyone not already running it installed. Android and desktop
+   Chrome hand us a real install prompt; iOS has no such API, so it gets
+   instructions instead.
+   ============================================================ */
+const SEEN_KEY = 'bfd-install-seen';
+let deferredPrompt = null;
+
+function isInstalled(){
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+}
+
+function installSteps(){
+  const btn = document.getElementById('ish-install');
+  const shareGlyph = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/></svg>`;
+  const menuGlyph = `<svg class="ic" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>`;
+
+  if (deferredPrompt){
+    btn.hidden = false;
+    return `<li>Tap <b>Install</b> below.</li>
+            <li>Confirm, and it lands on your home screen.</li>`;
+  }
+  btn.hidden = true;
+  if (IS_IOS){
+    return `<li>Tap the <b>Share</b> button ${shareGlyph} at the bottom of Safari.</li>
+            <li>Scroll down and tap <b>Add to Home Screen</b>.</li>
+            <li>Tap <b>Add</b>.</li>`;
+  }
+  return `<li>Tap the <b>menu</b> ${menuGlyph} at the top right of Chrome.</li>
+          <li>Tap <b>Add to Home screen</b> (or <b>Install app</b>).</li>
+          <li>Confirm.</li>`;
+}
+
+function openSheet(){
+  document.getElementById('ish-steps').innerHTML = installSteps();
+  document.getElementById('sheetwrap').hidden = false;
+}
+function closeSheet(){
+  document.getElementById('sheetwrap').hidden = true;
+  localStorage.setItem(SEEN_KEY, '1');
+}
+
+document.getElementById('ish-close').onclick = closeSheet;
+document.getElementById('sheetwrap').onclick = e => {
+  if (e.target.id === 'sheetwrap') closeSheet();     // tap the backdrop
+};
+document.getElementById('ish-install').onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  closeSheet();
+};
+/* footer link re-opens it after it has been dismissed */
+document.getElementById('howto').onclick = e => { e.preventDefault(); openSheet(); };
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // if the sheet is already up, upgrade it to a real Install button
+  if (!document.getElementById('sheetwrap').hidden) openSheet();
+});
+window.addEventListener('appinstalled', () => {
+  localStorage.setItem(SEEN_KEY, '1');
+  deferredPrompt = null;
+});
+
+/* Show once, and only to people who could actually act on it. */
+if (!isInstalled() && !localStorage.getItem(SEEN_KEY) && (IS_IOS || IS_ANDROID)){
+  setTimeout(openSheet, 1200);
+}
+
+/* service worker */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manning card preview — format discussion only</title>
+<style>
+  :root{
+    --bg:#081420; --panel:#0f2033; --panel2:#152943; --line:#233d58;
+    --txt:#e8f1f7; --dim:#8fa8bd; --faint:#5a7488;
+    --gold:#3ac0b0; --amber:#e0a52c; --red:#e0483a;
+    /* Same values as index.html's --a/--b/--c (its shift-calendar letter
+       colors) -- kept as a literal copy here since this file is still a
+       standalone preview, not sharing a stylesheet with the real app.
+       Update both places if that palette ever changes, until this gets
+       wired into index.html for real. */
+    --shift-a:#e0483a; --shift-b:#3f93e0; --shift-c:#43b06a;
+  }
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--txt); margin:0; padding:20px 16px 60px;
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px}
+  .subhead{color:var(--dim);font-size:13px;margin:0 0 24px}
+  .banner{
+    background:#1d2839;border:1px solid var(--line);border-left:4px solid var(--amber);
+    border-radius:10px;padding:12px 14px;margin-bottom:22px;font-size:13px;color:var(--dim);
+  }
+  .banner + .banner{margin-top:-12px}
+  .banner b{color:var(--txt)}
+  .banner code{background:#152030;padding:1px 5px;border-radius:4px;font-size:12px}
+
+  /* ---------- page banner: "Daily Manning" + big shift/day readout ----------
+     "Daily Manning" is the small label; the shift+day line underneath is the
+     thing someone actually needs at a glance, so it's the big, bold element,
+     not a muted subtitle. Computed from the SAME rotation math as the real
+     app's shift.js -- see the JS comment near SHIFT_ANCHOR for why this is a
+     copy for now and what to do about that when this gets wired in for real. */
+  .page-banner{margin-bottom:22px}
+  .pb-main{
+    font-size:13px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+    color:var(--dim);margin-bottom:2px;
+  }
+  .pb-sub{font-size:32px;font-weight:800;line-height:1.15}
+  .pb-sub .letter.a{color:var(--shift-a)}
+  .pb-sub .letter.b{color:var(--shift-b)}
+  .pb-sub .letter.c{color:var(--shift-c)}
+
+  .station{margin-bottom:28px}
+  .station-h{
+    display:flex;align-items:center;gap:10px;margin-bottom:10px;
+    font-size:13px;letter-spacing:.8px;text-transform:uppercase;font-weight:700;color:var(--gold);
+  }
+  .station-h .line{flex:1;height:1px;background:var(--line)}
+
+  .unit{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:12px 16px;margin-bottom:12px;
+  }
+  /* Red rule under the unit title, per request -- riding on the existing
+     bottom padding/margin rather than adding a new spacer, so it reads as a
+     hairline divider, not extra vertical space. */
+  .unit-top{
+    display:flex;align-items:baseline;gap:8px;margin-bottom:6px;
+    padding-bottom:6px;border-bottom:2px solid var(--red);
+  }
+  .unit-code{font-size:16px;font-weight:800}
+  .daybadge{
+    font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+    padding:2px 7px;border-radius:20px;
+  }
+  .daybadge.mismatch{background:#332616;color:var(--amber)}
+
+  /* Flex-wrap at every width, not just ≥640px -- a unit with no split
+     seats (see .seats.narrow below) is only as wide as its longest name,
+     so on a single-column mobile layout two of them (e.g. E3 + M3) used to
+     stack full-width with a wide dead band of empty card behind each one
+     (confirmed by measuring the actual text extent: ~190px of blank space
+     after a name like "Ford"). Letting them wrap into the same flex row
+     instead packs them side by side and reclaims that space, same idea as
+     the wide-view station row below, just no longer gated to wide view.
+     Units WITH a split (AM/PM columns) still want the full row to
+     themselves on mobile -- flex:1 1 260px with no sibling on the line
+     makes a lone item grow to fill it, same as before. auto-fit-style
+     wrapping lets a 3-unit station reflow (2+1, 1+1+1, ...) gracefully
+     depending how much of it is narrow vs full-width, rather than forcing
+     a fixed column count. */
+  .units{display:flex; flex-wrap:wrap; gap:12px}
+  .units .unit{flex:1 1 260px; margin-bottom:0}
+  /* flex:0 0 auto, not flex:1 -- a narrow unit must NOT grow to claim
+     leftover row space (that's exactly the full-width-with-empty-band
+     problem this replaces); its box should stay sized to its own content
+     so a sibling narrow unit can share the same row beside it. */
+  .units .unit.narrow{flex:0 0 auto; max-width:100%}
+  /* Applied by JS, not CSS, after layout settles -- see fixSoloNarrowUnits.
+     A narrow unit that ends up the ONLY thing on its flex row (its would-be
+     row partner didn't fit, or there wasn't one) has no neighbor left to
+     pack against, so shrink-wrapping it just strands a small card next to a
+     dead band of page background instead of card. Growing it to fill the
+     row at that point is the same trade its non-narrow siblings already
+     make when they're alone on a row. */
+  .units .unit.narrow.solo{flex:1 1 260px}
+
+  /* .seats is the ONE grid the whole unit's rows share -- each .seat row is
+     display:contents, so its child cells become direct items of THIS grid
+     rather than of their own separate per-row grid. That's what lets the
+     name column's width be driven by max-content across every row at once:
+     one shared column track, sized to the single widest name+tag in the
+     unit, instead of each row picking its own width independently.
+
+     TWO layouts share this class:
+     - default (5 cols): pos, AM marker, AM name, PM marker, PM name -- for
+       units that have at least one split seat, so the AM/PM columns are
+       actually needed somewhere in the card.
+     - .narrow (2 cols): pos, name -- for units where NO seat splits at all
+       (e.g. E3: McClain/Nichols/Bailey/Ford, all plain 24hr people). Without
+       this, those units were reserving the full AM-marker/PM-marker/PM-name
+       width for a split that never happens anywhere in the card, which is
+       exactly the "excess empty space on the right" from the screenshot --
+       the card wasn't overflowing, it just had nothing to put in the space
+       it was reserving. Cutting that reservation (rather than centering
+       content inside it) fixes the actual cause. */
+  .seats{
+    display:grid; grid-template-columns:40px 26px max-content 26px 1fr;
+    align-items:baseline; row-gap:5px; column-gap:6px; font-size:14px;
+  }
+  /* max-content, not 1fr -- 1fr would still stretch to fill whatever width
+     the (now fit-content-sized) .unit card happens to have, defeating the
+     point. max-content sizes this column to its own text, same idea as
+     the default layout's AM-name column already does. */
+  .seats.narrow{grid-template-columns:40px max-content}
+  .seat{display:contents}
+  .pos{font-size:12px;font-weight:800;color:var(--gold)}
+  .mk{
+    font-size:8px;font-weight:800;width:22px;height:14px;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;color:#0a1620;
+    letter-spacing:.2px;
+  }
+  .mk.a{background:var(--gold)}
+  .mk.p{background:#7fa8c9}
+  /* padding-right (not column-gap, which is uniform across every column
+     pair) is what puts ~20px between wherever the longest AM name+tag
+     combo ends and where the PM marker starts, without affecting the
+     pos/marker gaps elsewhere in the row. */
+  .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .name.am-slot{padding-right:14px}
+  .empty{color:var(--faint);font-style:italic}
+  .tag{
+    font-size:9px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+    padding:1px 5px;border-radius:4px;margin-left:5px;vertical-align:1px;white-space:nowrap;
+  }
+  .tag-ot{background:#332616;color:#e0a04a}
+  .tag-tt{background:#1a2c33;color:#5fc4c4}
+  .tag-acting{background:#241b3a;color:#a98ef0}
+  .tag-raw{background:#2a1616;color:#e0716a}
+
+  /* Row shading. .seat's own box doesn't exist (display:contents above), so
+     this can't be a background on .seat itself -- instead it's a separate
+     grid item per shaded row, explicitly placed on that row via inline
+     grid-row (set in JS, where the row index is already known) and spanning
+     every column via grid-column:1/-1 regardless of narrow vs default width.
+     Placed first in that row's HTML so the real content (added after, same
+     grid-row) paints on top of it, not behind it. align-self:stretch
+     overrides the grid's own baseline alignment just for this item, so an
+     empty div doesn't collapse to zero height trying to align its (nonexistent) baseline. */
+  /* align-self:stretch alone measured out to a resolved height of 0 in
+     testing -- the row's own track height wasn't being picked up for this
+     item, for reasons not worth chasing further. An explicit height
+     matching the measured row content height (21px at this font-size) is
+     the reliable fix; every row here is single-line by design (names
+     truncate with ellipsis rather than wrap), so a fixed height is safe. */
+  .stripe{
+    grid-column:1/-1; height:21px; align-self:center;
+    background:rgba(255,255,255,.06); border-radius:6px;
+    margin-left:-8px; margin-right:-8px;
+  }
+
+  .filler{
+    /* 1/-1, not a hardcoded 1/6 -- narrow-mode units only have 2 grid
+       columns, and 1/6 would ask for a column that doesn't exist there. */
+    grid-column:1/-1; display:flex; align-items:center; gap:8px;
+    padding:6px 0; font-size:13px; color:var(--amber);
+  }
+  .filler .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex:0 0 auto}
+
+  .legend{
+    margin-top:32px;padding-top:18px;border-top:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px;color:var(--dim);align-items:center;
+  }
+  .legend b{color:var(--txt);font-size:13px;width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-banner" id="page-banner"></div>
+
+  <h1>Manning card — formatting round 2</h1>
+  <p class="subhead">Full unit names, red divider, row shading, tighter cards for non-split units, and the not-updated flag — all against today's real sheet.</p>
+
+  <div class="banner">
+    <b>Not-updated flag is new.</b> Each unit's raw "Day 1/Day 2" text is
+    still not shown (as agreed) — instead, its sheet value is compared
+    against today's actual shift day (computed the same way the app's real
+    shift rotation is, in the banner above). The gap this closes: the header
+    always shows today's correct calendar day the instant it flips, but a
+    unit's manning entry can still be showing yesterday's crew until someone
+    updates it, typically not until ~0800. A stale entry shows
+    <span class="daybadge mismatch" style="margin:0 2px">Not updated</span>
+    so that's visible at a glance instead of silently looking current. A
+    blank day field shows nothing — same as a real match — since there's
+    nothing to compare a blank against, and it isn't evidence the manning
+    itself is stale.
+  </div>
+
+  <div id="output"></div>
+
+  <div class="legend">
+    <b>Legend</b>
+    <span><span class="mk a" style="display:inline-flex">AM</span></span>
+    <span><span class="mk p" style="display:inline-flex">PM</span></span>
+    <span><span class="tag tag-acting">Acting</span></span>
+    <span><span class="tag tag-ot">OT</span> overtime</span>
+    <span><span class="tag tag-tt">TT</span> trade of time</span>
+    <span><span class="tag tag-raw">unclear</span> didn't match a known pattern — shown exactly as typed</span>
+    <span><span class="filler" style="display:inline-flex;padding:0"><span class="dot"></span></span> manning not entered yet for this unit</span>
+    <span><span class="daybadge mismatch">Not updated</span> unit's manning is still showing yesterday's day</span>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   PARSER -- this is the logic itself, not just a mockup of the output.
+   Meant to be liftable close to as-is into the real app once approved.
+   ============================================================ */
+
+function normalizePosition(raw){
+  var t = (raw || '').trim();
+  if (/^(eo|eng|do)$/i.test(t)) return 'ENG';
+  if (/^(capt|cpt)$/i.test(t)) return 'CPT';
+  return t;
+}
+
+/* Full unit names for the card header ("Engine 1" instead of "E1") -- only
+   the three prefixes actually confirmed so far. Anything else (a Squad,
+   a Rescue, whatever shows up later) falls back to the raw code rather
+   than guessing a word that might be wrong. */
+var UNIT_FULL_NAMES = { E: 'Engine', M: 'Medic', T: 'Tower' };
+function unitFullName(code){
+  var m = (code || '').match(/^([A-Za-z]+)(\d.*)$/);
+  if (!m) return code;
+  var full = UNIT_FULL_NAMES[m[1].toUpperCase()];
+  return full ? (full + ' ' + m[2]) : code;
+}
+
+/* Mirrors the real app's shift.js exactly -- same anchor date, same 6-day
+   B-B-C-C-A-A cycle -- so this preview's day-mismatch check demonstrates
+   real behavior, not a fabricated one. IMPORTANT if this gets lifted into
+   the real app: call the app's ACTUAL shiftFor() there instead of this
+   copy. Two independently-maintained copies of the same rotation constants
+   is exactly the kind of thing that quietly drifts if the anchor date is
+   ever changed and only one copy gets updated. */
+var SHIFT_ANCHOR = Date.UTC(2026, 7, 11);
+var SHIFT_CYCLE = ['B', 'B', 'C', 'C', 'A', 'A'];
+function shiftForToday(){
+  var now = new Date();
+  var days = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - SHIFT_ANCHOR) / 86400000);
+  var i = ((days % 6) + 6) % 6;
+  return { letter: SHIFT_CYCLE[i], dayOf: (i % 2) + 1 };
+}
+var TODAY_SHIFT = shiftForToday();
+var TODAY_DAY_LABEL = 'Day ' + TODAY_SHIFT.dayOf;
+
+/* Compares a unit's raw day-flag text against today's actual day. Blank
+   deliberately reads the same as a match (nothing to flag) -- it isn't
+   evidence the manning is stale, just a unit whose sheet doesn't track this
+   field at all (every Medic/Truck row in the real sheet). The only thing
+   worth surfacing is a unit that DOES have a day value and it's wrong,
+   which means someone hasn't updated it since the last shift change. */
+function isDayStale(dayFlag){
+  var norm = (dayFlag || '').trim();
+  return !!norm && norm !== TODAY_DAY_LABEL;
+}
+
+/* A slash only splits into a new person when the word immediately after it
+   is NOT a recognized tag/rank word -- i.e. it looks like the start of a
+   new name, not a continuation of the current person's qualifier. Checked
+   by content, not by position, so it works whether or not parens are
+   involved: "A/CPT", "OT/AM", "Taylor-A/ENG" all stay ONE person's tag,
+   while ".../ Dobbins" or ".../ V. Kelly" correctly split, because
+   "Dobbins" and "V" aren't in the known-word list. Commas always split. */
+var TAG_WORD_RE = /^(ENG|EO|DO|CPT|CAPT|FF|STU|AM|PM|OT|TT|A)\b/i;
+
+function splitPeople(raw){
+  var out = [];
+  var buf = '';
+  for (var i = 0; i < raw.length; i++){
+    var ch = raw.charAt(i);
+    if (ch === ','){ out.push(buf); buf = ''; continue; }
+    if (ch === '/'){
+      var after = raw.slice(i + 1).replace(/^[\s(]+/, '');
+      var m = after.match(/^([A-Za-z]+)/);
+      var word = m ? m[1] : '';
+      if (TAG_WORD_RE.test(word)){ buf += ch; continue; }
+      out.push(buf); buf = ''; continue;
+    }
+    buf += ch;
+  }
+  out.push(buf);
+  var result = [];
+  for (var j = 0; j < out.length; j++){
+    var v = out[j].trim();
+    if (v) result.push(v);
+  }
+  return result;
+}
+
+/* Pulls OT / TT / acting-rank tags out of one person's raw fragment and
+   returns the cleaned name plus whatever tags were found. Also strips a
+   bare "AM"/"PM" word if present -- redundant once position (1st vs 2nd)
+   already carries that meaning, so it would otherwise show twice. Acting
+   is shown as a plain "Acting" tag regardless of which rank it's acting
+   into -- CPT and ENG are both real cases, and this can apply to a full
+   24-hour entry just as easily as to one half of a split. */
+function parsePerson(raw){
+  var s = raw;
+  var tags = [];
+
+  var acting = s.match(/\(?A\/([A-Za-z]+)(-[A-Za-z]+)?\)?/);
+  if (acting){
+    tags.push({ cls: 'tag-acting', text: 'Acting' });
+    s = s.replace(acting[0], '');
+  }
+  if (/\bOT\b/i.test(s)){ tags.push({ cls: 'tag-ot', text: 'OT' }); s = s.replace(/\bOT\b/i, ''); }
+  if (/\bTT\b/i.test(s)){ tags.push({ cls: 'tag-tt', text: 'TT' }); s = s.replace(/\bTT\b/i, ''); }
+  s = s.replace(/\b(AM|PM)\b/gi, '');
+  /* "/" is included here on purpose -- once splitPeople has already made
+     its splitting decisions, any slash still inside a single fragment is
+     always a leftover from a tag-continuation ("OT/AM", "A/EO") that was
+     correctly kept together, never a real separator. Left in place it
+     showed up as a stray trailing "/" on otherwise-correct names (e.g.
+     "Clay /" instead of "Clay") -- found by running today's real sheet. */
+  s = s.replace(/[()\-,\/]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  return { name: s, tags: tags };
+}
+
+/* Fallback for when there's no usable separator character at all -- e.g.
+   "Giron-OT/AM Aston-PM" has two people with nothing but a space between
+   them. There's no fixed rule for what separates two names (confirmed:
+   people use whatever), so the only reliable anchor left is the qualifier
+   itself -- whatever precedes "AM" is the first person, whatever follows
+   is the second. Only trusted when there's exactly one AM and one PM, with
+   AM appearing first; anything more ambiguous than that (zero, doubled,
+   or reversed) falls through to normal single/unclear handling rather
+   than guessing. */
+function splitByHalfKeywords(raw){
+  var amAll = raw.match(/\bAM\b/gi);
+  var pmAll = raw.match(/\bPM\b/gi);
+  if (!amAll || !pmAll || amAll.length !== 1 || pmAll.length !== 1) return null;
+
+  var amMatch = raw.match(/\bAM\b/i);
+  var pmMatch = raw.match(/\bPM\b/i);
+  if (amMatch.index > pmMatch.index) return null;   // PM before AM -- don't guess
+
+  var end = amMatch.index + amMatch[0].length;
+  if (raw.charAt(end) === ')') end += 1;             // keep a trailing paren with person 1
+
+  var first = raw.slice(0, end).trim();
+  var second = raw.slice(end).replace(/^[\s\/,\-]+/, '').trim();
+  if (!first || !second) return null;
+  return [first, second];
+}
+
+/* Top-level: given the raw name cell, returns either a single 24hr entry
+   or an {am, pm} pair. Falls back to the raw, unparsed text if something
+   doesn't reduce to a real name (3+ fragments, or nothing left after
+   stripping known tags). */
+function parseSeat(rawName){
+  if (!rawName) return { empty: true };
+
+  var people = splitPeople(rawName);
+  if (people.length === 1){
+    var byHalf = splitByHalfKeywords(rawName);
+    if (byHalf){
+      var amH = parsePerson(byHalf[0]);
+      var pmH = parsePerson(byHalf[1]);
+      if (amH.name && pmH.name) return { am: amH, pm: pmH };
+    }
+    var p = parsePerson(people[0]);
+    if (!p.name) return { unclear: true, raw: rawName };
+    return { single: p };
+  }
+  if (people.length === 2){
+    var am = parsePerson(people[0]);
+    var pm = parsePerson(people[1]);
+    if (!am.name || !pm.name) return { unclear: true, raw: rawName };
+    return { am: am, pm: pm };
+  }
+  return { unclear: true, raw: rawName };
+}
+
+function tagsHTML(tags){
+  var s = '';
+  for (var i = 0; i < tags.length; i++) s += '<span class="tag ' + tags[i].cls + '">' + tags[i].text + '</span>';
+  return s;
+}
+
+function stripeDiv(rowIndex){
+  return '<div class="stripe" style="grid-row:' + rowIndex + '"></div>';
+}
+
+/* rowIndex is 1-based (matches CSS grid-row numbering) and drives both the
+   alternating stripe and, in the default (non-narrow) layout, nothing else
+   -- narrow vs default is decided once per UNIT (see unitHasSplit), not
+   per row, since mixing column counts within one grid would break the
+   shared-width alignment narrow mode exists to simplify. */
+/* Every cell below carries an explicit grid-row:N, not just the stripe.
+   Mixing explicit placement (the stripe) with implicit auto-flow (the
+   content cells, which is what this looked like before) turned out to be
+   the actual bug -- measured directly, a stripe meant for row 2 was
+   rendering a full row-height too high, because the browser's auto-flow
+   counted rows differently once an explicitly-placed item was interleaved
+   into the DOM sequence. Placing every cell in a row explicitly removes
+   the ambiguity instead of fighting it. */
+/* Every content cell below carries an explicit grid-column, not just an
+   explicit grid-row. Auto-placed columns aren't enough: the .stripe div for
+   this same row is grid-column:1/-1, and it's placed in the DOM BEFORE the
+   row's real content (so the content paints on top of it, per the .stripe
+   CSS comment). Auto-placement processes DOM order, so on a striped row the
+   stripe claims every template column first, leaving no free cell for the
+   auto-column content to land in -- the browser doesn't wrap it to a new
+   row (grid-row is pinned), it invents new IMPLICIT columns past the
+   template and strands the whole row off to the right (confirmed by
+   measuring: content x-offset landed exactly at the template grid's right
+   edge). Explicit columns let content and stripe intentionally occupy the
+   same cells instead of competing for auto-placement. */
+function seatHTML(position, rawName, narrow, rowIndex){
+  var pos = normalizePosition(position);
+  var parsed = parseSeat(rawName);
+  var stripe = (rowIndex % 2 === 0) ? stripeDiv(rowIndex) : '';
+  function c(col){ return ' style="grid-row:' + rowIndex + ';grid-column:' + col + '"'; }
+
+  if (narrow){
+    if (parsed.empty)
+      return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div><div class="name empty"' + c(2) + '>— vacant —</div></div>';
+    if (parsed.unclear)
+      return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div><div class="name"' + c(2) + '>' + parsed.raw + ' <span class="tag tag-raw">unclear</span></div></div>';
+    var solo = parsed.single || { name: '', tags: [] };
+    return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div><div class="name"' + c(2) + '>' + solo.name + tagsHTML(solo.tags) + '</div></div>';
+  }
+
+  if (parsed.empty)
+    return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div><div class="mk"' + c(2) + '></div>' +
+           '<div class="name am-slot empty"' + c(3) + '>— vacant —</div><div class="mk"' + c(4) + '></div><div class="name"' + c(5) + '></div></div>';
+
+  if (parsed.unclear)
+    return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div><div class="mk"' + c(2) + '></div>' +
+           '<div class="name"' + c('3/6') + '>' + parsed.raw + ' <span class="tag tag-raw">unclear</span></div></div>';
+
+  if (parsed.single)
+    return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div><div class="mk"' + c(2) + '></div>' +
+           '<div class="name am-slot"' + c(3) + '>' + parsed.single.name + tagsHTML(parsed.single.tags) + '</div>' +
+           '<div class="mk"' + c(4) + '></div><div class="name"' + c(5) + '></div></div>';
+
+  return stripe + '<div class="seat"><div class="pos"' + c(1) + '>' + pos + '</div>' +
+         '<div class="mk a"' + c(2) + '>AM</div><div class="name am-slot"' + c(3) + '>' + parsed.am.name + tagsHTML(parsed.am.tags) + '</div>' +
+         '<div class="mk p"' + c(4) + '>PM</div><div class="name"' + c(5) + '>' + parsed.pm.name + tagsHTML(parsed.pm.tags) + '</div></div>';
+}
+
+/* A unit where every seat's name cell is blank means the sheet hasn't been
+   touched yet today -- different from an individual vacant seat inside an
+   otherwise-staffed unit, and worth saying so explicitly rather than
+   rendering a wall of "vacant" that could read as "everyone went home." */
+function isUnitUnfilled(seats){
+  for (var i = 0; i < seats.length; i++){
+    if ((seats[i][1] || '').trim()) return false;
+  }
+  return true;
+}
+
+/* Does ANY seat in this unit actually split into AM/PM? Decides narrow vs
+   default layout for the whole card (see the .seats/.seats.narrow CSS
+   comment for why this exists). */
+function unitHasSplit(seats){
+  for (var i = 0; i < seats.length; i++){
+    var parsed = parseSeat(seats[i][1]);
+    if (parsed.am && parsed.pm) return true;
+  }
+  return false;
+}
+
+function hasWord(s, word){
+  return new RegExp('\\b' + word + '\\b', 'i').test(s || '');
+}
+
+/* Some split seats arrive as two SEPARATE ROWS in the sheet -- same
+   position code, one row tagged AM only, the next tagged PM only -- rather
+   than one comma/slash-joined cell (e.g. "Saif (OT) AM" then "Galvan
+   (PM)" on E2). Detected and combined here, BEFORE the per-seat parser
+   ever runs, by joining them into one cell the exact same way a real
+   AM/PM cell already looks ("Saif (OT) AM, Galvan (PM)") -- so
+   splitPeople/parsePerson need no special-casing for it at all.
+
+   Only merges when the pattern is unambiguous: same position code, the
+   first row has AM and not PM, the second has PM and not AM. Two rows
+   with no AM/PM at all (e.g. E3's Bailey / Ford) are correctly left
+   alone -- they're two different people each working their own 24, not
+   a split seat, and must not be merged into one. */
+function groupSeatRows(seats){
+  var out = [];
+  for (var i = 0; i < seats.length; i++){
+    var cur = seats[i];
+    var next = seats[i + 1];
+    if (next && cur[0] === next[0]){
+      var curName = (cur[1] || '').trim();
+      var nextName = (next[1] || '').trim();
+      var curIsAmOnly = curName && hasWord(curName, 'AM') && !hasWord(curName, 'PM');
+      var nextIsPmOnly = nextName && hasWord(nextName, 'PM') && !hasWord(nextName, 'AM');
+      if (curIsAmOnly && nextIsPmOnly){
+        out.push([cur[0], curName + ', ' + nextName]);
+        i++;   // consume the next row too, it's already folded in
+        continue;
+      }
+    }
+    out.push(cur);
+  }
+  return out;
+}
+
+function unitHTML(u, pulledAt){
+  var seats = groupSeatRows(u.seats);
+  var narrow = !unitHasSplit(seats);
+  var body;
+  if (isUnitUnfilled(seats)){
+    body = '<div class="filler"><span class="dot"></span>Manning not done @ ' + pulledAt + '</div>';
+  } else {
+    body = '';
+    for (var i = 0; i < seats.length; i++) body += seatHTML(seats[i][0], seats[i][1], narrow, i + 1);
+  }
+
+  var badge = isDayStale(u.day) ? '<span class="daybadge mismatch">Not updated</span>' : '';
+
+  return '<div class="unit' + (narrow ? ' narrow' : '') + '"><div class="unit-top"><span class="unit-code">' + unitFullName(u.unit) + '</span>' + badge + '</div>' +
+         '<div class="seats' + (narrow ? ' narrow' : '') + '">' + body + '</div></div>';
+}
+
+/* Explicit sort, not an accident of row order in the sheet: stations
+   ascending 1-7, and within a station, Engine before Truck before Medic
+   (falls back to alphabetical for anything else, e.g. a Squad unit). */
+var UNIT_TYPE_RANK = { E: 0, T: 1, M: 2 };
+function unitTypeRank(code){
+  var letter = code.replace(/[0-9].*$/, '');
+  return UNIT_TYPE_RANK.hasOwnProperty(letter) ? UNIT_TYPE_RANK[letter] : 9;
+}
+function sortUnits(units){
+  return units.slice().sort(function(a, b){ return unitTypeRank(a.unit) - unitTypeRank(b.unit); });
+}
+function sortStations(stations){
+  return stations.slice().sort(function(a, b){ return a.station - b.station; });
+}
+
+/* ---------------- today's real sheet (Aug 12), columns A/B/C/E only ----------------
+   Transcribed as-typed, nothing cleaned up by hand. */
+var PULLED_AT = '07:42';   // stand-in for the real fetch timestamp
+
+var DATA = [
+  { station: 1, units: [
+    { unit: 'E1', day: 'Day 2', seats: [
+      ['Capt', 'Griffith'], ['ENG', 'Taylor-A/ENG'],
+      ['FF', 'Giron-OT/AM Aston-PM'], ['FF', 'Clay-OT/AM/ Lehew(PM)'], ['FF', '']
+    ]}
+  ]},
+  { station: 2, units: [
+    { unit: 'E2', day: 'Day 2', seats: [
+      ['CPT', 'Cooper'], ['ENG', 'Paquet'], ['FF', 'Dove'],
+      ['FF', 'Saif (OT) AM'], ['FF', 'Galvan (PM)']
+    ]},
+    { unit: 'M2', day: null, seats: [
+      ['FF', 'Birdwell'], ['FF', 'Galvan(AM)/Henry(PM)'], ['STU', '']
+    ]}
+  ]},
+  { station: 3, units: [
+    { unit: 'E3', day: 'Day 2', seats: [
+      ['CPT', 'McClain'], ['ENG', 'Nichols'], ['FF', 'Bailey'], ['FF', 'Ford'], ['FF', '']
+    ]},
+    { unit: 'M3', day: null, seats: [
+      ['FF', 'South'], ['FF', 'L. Henderson'], ['STU', '']
+    ]}
+  ]},
+  { station: 4, units: [
+    { unit: 'E4', day: 'Day 1', seats: [
+      ['CPT', 'Lopez'], ['ENG', 'Crouse'],
+      ['FF', 'Eddins - AM / Drake - PM'], ['FF', 'Schweiss - AM / McNeil - PM'], ['FF', '']
+    ]},
+    { unit: 'M4', day: null, seats: [
+      ['FF', 'McNeil - AM / Blair - PM'], ['FF', 'Aston - AM / Lee - PM'], ['STU', '']
+    ]}
+  ]},
+  { station: 5, units: [
+    { unit: 'E5', day: 'Day 2', seats: [
+      ['CPT', 'Russi'], ['ENG', 'Quijas'], ['FF', 'Bakeberg'], ['FF', 'Anderson'], ['FF', '']
+    ]},
+    { unit: 'M5', day: null, seats: [
+      ['FF', 'Rivas'], ['FF', 'Morales'], ['STU', '']
+    ]}
+  ]},
+  { station: 6, units: [
+    { unit: 'E6', day: 'Day 1', seats: [
+      ['CPT', 'Zinsky'], ['ENG', 'M. Rojas-OT'],
+      ['FF', 'R Jones-OT/AM, Ramirez PM'], ['FF', 'B Smith AM, Houser PM'], ['FF', '']
+    ]}
+  ]},
+  { station: 7, units: [
+    { unit: 'E7', day: 'Day 2', seats: [
+      ['CPT', 'V. Kelly (A/CPT-AM)/ Dobbins (PM)'],
+      ['ENG', 'Jenkins (A/EO)/ V. Kelly'],
+      ['FF', 'Cole'],
+      ['FF', 'Lehew (AM)/ Jenkins (PM)'],
+      ['FF', '']
+    ]},
+    { unit: 'T7', day: null, seats: [
+      ['CPT', 'Torres'], ['ENG', 'K. Phillips'], ['FF', ''], ['FF', '']
+    ]},
+    { unit: 'M7', day: null, seats: [
+      ['FF', 'Johnson'], ['FF', 'B. Smith'], ['STU', '']
+    ]}
+  ]}
+];
+
+document.getElementById('page-banner').innerHTML =
+  '<div class="pb-main">Daily Manning</div>' +
+  '<div class="pb-sub"><span class="letter ' + TODAY_SHIFT.letter.toLowerCase() + '">' + TODAY_SHIFT.letter + '</span> Shift &middot; ' + TODAY_DAY_LABEL + '</div>';
+
+var html = '';
+var stations = sortStations(DATA);
+for (var si = 0; si < stations.length; si++){
+  var st = stations[si];
+  html += '<div class="station"><div class="station-h"><span>Station ' + st.station + '</span><span class="line"></span></div><div class="units">';
+  var units = sortUnits(st.units);
+  for (var ui = 0; ui < units.length; ui++){
+    html += unitHTML(units[ui], PULLED_AT);
+  }
+  html += '</div></div>';
+}
+document.getElementById('output').innerHTML = html;
+
+/* A narrow unit that ends up alone on its flex row gets .solo (see the
+   .unit.narrow.solo CSS) so it fills the row instead of leaving a dead
+   band of page background beside it. Whether a given narrow unit lands
+   alone depends on how much room its row partner needs, which depends on
+   viewport width -- that's the whole point of packing -- so this re-runs
+   on resize, not just once at load. Always clears solo first: a unit that
+   was alone at one width may have gained a row partner at another. */
+function fixSoloNarrowUnits(){
+  var narrowUnits = document.querySelectorAll('.unit.narrow');
+  for (var i = 0; i < narrowUnits.length; i++) narrowUnits[i].classList.remove('solo');
+
+  var containers = document.querySelectorAll('.units');
+  for (var ci = 0; ci < containers.length; ci++){
+    var rows = {};
+    var els = containers[ci].querySelectorAll('.unit.narrow');
+    for (var ei = 0; ei < els.length; ei++){
+      var rowTop = els[ei].offsetTop;
+      (rows[rowTop] = rows[rowTop] || []).push(els[ei]);
+    }
+    for (var rowTop2 in rows){
+      if (rows[rowTop2].length === 1) rows[rowTop2][0].classList.add('solo');
+    }
+  }
+}
+fixSoloNarrowUnits();
+
+var solveResizeTimer;
+window.addEventListener('resize', function(){
+  clearTimeout(solveResizeTimer);
+  solveResizeTimer = setTimeout(fixSoloNarrowUnits, 120);
+});
+</script>
+</body>
+</html>
