@@ -1,6 +1,6 @@
 /* BFDLink — service worker
    BUMP THIS VERSION EVERY TIME YOU DEPLOY, or phones will keep the old links. */
-const CACHE = 'bfdlink-v9';
+const CACHE = 'bfdlink-v10';
 
 const SHELL = [
   './',
@@ -18,7 +18,16 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache.addAll is all-or-nothing -- one bad/missing URL would reject the
+  // whole chain and skipWaiting() would never run, silently stranding the
+  // site on whatever service worker (older version or none) was already
+  // installed. Cache each file individually instead, so one failure just
+  // means that one asset isn't pre-cached, not that the update never lands.
+  e.waitUntil(
+    caches.open(CACHE).then(c =>
+      Promise.all(SHELL.map(url => c.add(url).catch(err => console.error('SW install: failed to cache', url, err))))
+    ).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {

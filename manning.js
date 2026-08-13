@@ -106,7 +106,7 @@ function parsePerson(raw){
   var s = raw;
   var tags = [];
 
-  var acting = s.match(/\(?A\/([A-Za-z]+)(-[A-Za-z]+)?\)?/);
+  var acting = s.match(/\(?A\/([A-Za-z]+)(-[A-Za-z]+)?\)?/i);
   if (acting){
     tags.push({ cls: 'tag-acting', text: 'Acting' });
     s = s.replace(acting[0], '');
@@ -238,7 +238,10 @@ function groupSeatRows(seats){
   for (var i = 0; i < seats.length; i++){
     var cur = seats[i];
     var next = seats[i + 1];
-    if (next && cur[0] === next[0]){
+    // Compare through normalizePosition(), not the raw sheet text -- "Capt"
+    // on one row and "CPT" on the next (a real documented inconsistency,
+    // see BFDLINK-BUILD-PLAN.md) is the same seat and should still merge.
+    if (next && normalizePosition(cur[0]) === normalizePosition(next[0])){
       var curName = (cur[1] || '').trim();
       var nextName = (next[1] || '').trim();
       var curIsAmOnly = curName && hasWord(curName, 'AM') && !hasWord(curName, 'PM');
@@ -280,7 +283,11 @@ function sortUnits(units){
   return units.slice().sort(function(a, b){ return unitTypeRank(a.unit) - unitTypeRank(b.unit); });
 }
 function sortStations(stations){
-  return stations.slice().sort(function(a, b){ return a.station - b.station; });
+  return stations.slice().sort(function(a, b){
+    if (a.station === null) return b.station === null ? 0 : 1;
+    if (b.station === null) return -1;
+    return a.station - b.station;
+  });
 }
 
 /* A narrow unit that ends up alone on its flex row gets .solo (see the CSS)
@@ -310,10 +317,13 @@ function fixSoloNarrowUnits(container){
 /* ---------------- API payload -> render-ready stations ---------------- */
 
 /* Unit codes don't carry an explicit station number -- it's the leading
-   digit(s) after the letter prefix (E1 -> station 1, M7 -> station 7). */
+   digit(s) after the letter prefix (E1 -> station 1, M7 -> station 7). A
+   code with no digit at all (a typo, or freeform text like "SPARE" in
+   column A) has no real station -- null, not 0, so it doesn't collide with
+   an actual "Station 0" and doesn't render as one. */
 function stationOfUnit(code){
   var m = (code || '').match(/(\d+)/);
-  return m ? parseInt(m[1], 10) : 0;
+  return m ? parseInt(m[1], 10) : null;
 }
 
 function groupIntoStations(units){
@@ -321,9 +331,10 @@ function groupIntoStations(units){
   for (var i = 0; i < units.length; i++){
     var u = units[i];
     var st = stationOfUnit(u.unit);
-    if (!map[st]) map[st] = { station: st, units: [] };
+    var key = (st === null) ? 'unlisted' : st;
+    if (!map[key]) map[key] = { station: st, units: [] };
     var seats = (u.seats || []).map(function(s){ return [s.position, s.name]; });
-    map[st].units.push({ unit: u.unit, dayFlag: u.dayFlag, seats: seats });
+    map[key].units.push({ unit: u.unit, dayFlag: u.dayFlag, seats: seats });
   }
   var out = [];
   for (var k in map) out.push(map[k]);
@@ -345,6 +356,20 @@ function formatAsOf(iso){
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   } catch (e) { return '—'; }
+}
+
+/* "stale" (above) only means the fetch itself failed -- it says nothing
+   about whether a SUCCESSFUL fetch actually returned current data. If the
+   server-side refresh trigger dies (quota exhaustion, a project edit that
+   un-registers it), doGet() can keep returning HTTP 200 with an
+   old-but-technically-valid payload forever, which would otherwise render
+   as fully fresh. 45 min is well beyond the normal ~20 min cache window, so
+   crossing it means something more than ordinary caching latency. */
+var MANNING_MAX_AGE_MINUTES = 45;
+function isPayloadOld(payload, now){
+  var modified = new Date(payload && payload.sheetModified);
+  if (isNaN(modified.getTime())) return false;
+  return (now - modified) > MANNING_MAX_AGE_MINUTES * 60 * 1000;
 }
 
 /* ---------------- fetch + last-good fallback ----------------
@@ -384,7 +409,9 @@ function renderManningInto(target, result){
   var asofText = 'As of ' + formatAsOf(payload.sheetModified);
   target.asof.innerHTML = result.stale
     ? '<span class="mp-stale">Couldn’t refresh — showing last known, ' + manningEsc(asofText.toLowerCase()) + '</span>'
-    : manningEsc(asofText);
+    : isPayloadOld(payload, now)
+      ? '<span class="mp-stale">' + manningEsc(asofText) + ' — hasn’t updated in a while</span>'
+      : manningEsc(asofText);
 
   var cmdHTML = commandRowHTML(payload.command);
   target.cmd.innerHTML = cmdHTML;
@@ -399,7 +426,8 @@ function renderManningInto(target, result){
   var html = '';
   for (var si = 0; si < stations.length; si++){
     var st = stations[si];
-    html += '<div class="station"><div class="station-h"><span>Station ' + st.station + '</span><span class="line"></span></div><div class="units">';
+    var stationLabel = (st.station === null) ? 'Unlisted' : ('Station ' + st.station);
+    html += '<div class="station"><div class="station-h"><span>' + stationLabel + '</span><span class="line"></span></div><div class="units">';
     var units = sortUnits(st.units);
     for (var ui = 0; ui < units.length; ui++) html += unitHTML(units[ui], now);
     html += '</div></div>';

@@ -828,9 +828,9 @@
 <script src="links.js"></script>
 <script>
 /* ---------- header shift bar ---------- */
-const now = new Date();
-const TY = now.getFullYear(), TM = now.getMonth(), TD = now.getDate();
-(function renderShiftBar(){
+let now = new Date();
+let TY = now.getFullYear(), TM = now.getMonth(), TD = now.getDate();
+function renderShiftBar(){
   const s = shiftFor(TY, TM, TD);
   const d1text = now.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
 
@@ -852,13 +852,19 @@ const TY = now.getFullYear(), TM = now.getMonth(), TD = now.getDate();
   // desktop too, not just mobile.
   [['shiftbar','sh-lt','sh-d1','sh-d2'], ['dsk-today','dsk-lt','dsk-d1','dsk-d2']].forEach(
     ([barId, ltId, d1Id, d2Id]) => {
-      document.getElementById(barId).classList.add('s' + s.letter);
+      const bar = document.getElementById(barId);
+      // Re-runs on a date refresh (see visibilitychange below), where the
+      // shift letter can change too -- drop any previous s* class first so
+      // it doesn't stack alongside the new one.
+      Array.from(bar.classList).forEach(c => { if (/^s[A-Z]$/.test(c)) bar.classList.remove(c); });
+      bar.classList.add('s' + s.letter);
       document.getElementById(ltId).textContent = s.letter;
       document.getElementById(d1Id).textContent = d1text;
       document.getElementById(d2Id).textContent = d2text;
     }
   );
-})();
+}
+renderShiftBar();
 
 /* ---------- calendar ---------- */
 let calY = TY, calM = TM;
@@ -903,6 +909,23 @@ function toggleCalendar(){
 }
 document.getElementById('shiftbar').onclick = toggleCalendar;
 document.getElementById('dsk-today').onclick = toggleCalendar;
+
+/* now/TY/TM/TD are computed once above -- if the installed PWA is left open
+   (foregrounded or backgrounded, not force-closed) across midnight, the
+   shift bar and the calendar's "today" outline would otherwise keep
+   showing yesterday until a manual reload. Recompute whenever the page
+   becomes visible again and the date has actually changed. */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  const fresh = new Date();
+  if (fresh.getFullYear() === TY && fresh.getMonth() === TM && fresh.getDate() === TD) return;
+  const wasViewingCurrentMonth = (calY === TY && calM === TM);
+  now = fresh;
+  TY = now.getFullYear(); TM = now.getMonth(); TD = now.getDate();
+  if (wasViewingCurrentMonth) { calY = TY; calM = TM; }
+  renderShiftBar();
+  drawCal();
+});
 
 /* ============================================================
    LINKS
@@ -1025,7 +1048,7 @@ function isFav(name){ return favs().indexOf(name) !== -1; }
 function toggleFav(name){
   const f = favs(), i = f.indexOf(name);
   if (i === -1) f.push(name); else f.splice(i, 1);
-  localStorage.setItem(FAV_KEY, JSON.stringify(f));
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(f)); } catch (e) {}
 }
 function allItems(){
   return LINKS.reduce((a, s) => a.concat(s.items), []);
@@ -1119,14 +1142,16 @@ document.getElementById('clr').onclick = () => { q.value = ''; render(); q.focus
    app is broken." Copying the address is the only genuinely useful action:
    paste it on a city computer.
 
-   This listener is registered BEFORE the scheme handler below on purpose —
-   an intranet tile never has a scheme, but if one were ever added, stopping
-   propagation here keeps the two from both firing on the same tap. */
+   No tile currently carries more than one of data-intranet/-comingsoon/
+   -manning/-scheme at once, but if that ever changes: every one of these
+   four click listeners is on `document`, so plain stopPropagation() would
+   NOT stop a sibling listener on the same target from also firing — only
+   stopImmediatePropagation() does, which is what all four actually use. */
 document.addEventListener('click', e => {
   const a = e.target.closest('a.tile[data-intranet]');
   if (!a) return;
   e.preventDefault();
-  e.stopPropagation();
+  e.stopImmediatePropagation();
   copyText(a.getAttribute('href')).then(ok => {
     toast(ok ? 'Address copied — open it on a city computer'
              : 'Could not copy. Long-press the tile to copy the link.');
@@ -1170,7 +1195,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('a.tile[data-comingsoon]');
   if (!a) return;
   e.preventDefault();
-  e.stopPropagation();
+  e.stopImmediatePropagation();
   document.getElementById('soon-sub').textContent = a.dataset.comingsoon;
   document.getElementById('soonwrap').hidden = false;
 });
@@ -1227,7 +1252,7 @@ document.getElementById('soonwrap').onclick = e => {
     const a = e.target.closest('a.tile[data-manning]');
     if (!a) return;
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
     manningWrap.hidden = false;
     // A stale/never-loaded view is the one case worth a silent auto-refresh
     // on open; otherwise the last fetch (page load, or the last manual tap)
@@ -1259,6 +1284,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('a.tile[data-scheme]');
   if (!a || !(IS_IOS || IS_ANDROID)) return;
   e.preventDefault();
+  e.stopImmediatePropagation();
   const fallback = a.getAttribute('href');
   const t = setTimeout(() => { window.location.href = fallback; }, 900);
   document.addEventListener('visibilitychange', function once(){
