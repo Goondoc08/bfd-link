@@ -61,6 +61,13 @@ const REFRESH_MINUTES = 10;
 const CACHE_TTL_SECONDS = (REFRESH_MINUTES + 10) * 60;
 const CACHE_KEY = 'bfdlink_manning_payload_v1';
 
+// Separate from CACHE_KEY: holds the last payload that was built without
+// error, at CacheService's own ceiling (6h). If the sheet read starts
+// throwing (bad ID, revoked permission, structural change), doGet() falls
+// back to this instead of returning Apps Script's default HTML error page.
+const LAST_GOOD_KEY = 'bfdlink_manning_last_good_v1';
+const LAST_GOOD_TTL_SECONDS = 21600;
+
 // The fresh=1 bypass has no rate limit -- it's available to anyone with the
 // URL, same as every other endpoint here. That's an accepted, known gap for
 // now (Aug 2026): the 10-minute schedule above keeps ambient staleness low
@@ -84,17 +91,48 @@ function doGet(e) {
   // or a caller explicitly asked to bypass it -- read live, and repopulate
   // the cache with what we just read so the NEXT request (even a normal
   // one) gets the fast path instead of also falling through to a live read.
-  const json = buildPayload();
-  cache.put(CACHE_KEY, json, CACHE_TTL_SECONDS);
-  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+  try {
+    const json = buildPayload();
+    cache.put(CACHE_KEY, json, CACHE_TTL_SECONDS);
+    cache.put(LAST_GOOD_KEY, json, LAST_GOOD_TTL_SECONDS);
+    return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    // Sheet/Drive read failed (bad ID, revoked permission, structural
+    // change). Without this catch, Apps Script would return its default
+    // HTML error trace with HTTP 200 -- valid-looking to the client's
+    // r.ok check, but not JSON, and this would repeat on every request
+    // until someone notices and fixes the sheet. Serve the last payload
+    // that built successfully instead, if there is one.
+    const lastGood = cache.get(LAST_GOOD_KEY);
+    if (lastGood) {
+      return ContentService.createTextOutput(lastGood).setMimeType(ContentService.MimeType.JSON);
+    }
+    const fallback = JSON.stringify({
+      asOf: new Date().toISOString(),
+      sheetModified: null,
+      command: { BC: '', FIT: '', SQ1: '' },
+      units: [],
+      error: String(err)
+    });
+    return ContentService.createTextOutput(fallback).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 /* Called only by the time-driven trigger (see setupTrigger()) -- reads the
    sheet and refreshes the cache on schedule, so ordinary doGet() calls
    from devices almost never need to do the expensive read themselves. */
 function refreshManningCache() {
-  const json = buildPayload();
-  CacheService.getScriptCache().put(CACHE_KEY, json, CACHE_TTL_SECONDS);
+  const cache = CacheService.getScriptCache();
+  try {
+    const json = buildPayload();
+    cache.put(CACHE_KEY, json, CACHE_TTL_SECONDS);
+    cache.put(LAST_GOOD_KEY, json, LAST_GOOD_TTL_SECONDS);
+  } catch (err) {
+    // Leave the existing cache entries alone -- a transient failure here
+    // shouldn't wipe out the last good read. doGet() will retry live once
+    // CACHE_TTL_SECONDS lapses, or fall back to LAST_GOOD_KEY if that also fails.
+    Logger.log('refreshManningCache failed: ' + err);
+  }
 }
 
 function buildPayload() {
@@ -154,13 +192,19 @@ function findSheetByGid(ss, gid) {
    label with nothing next to it. */
 function readCommandRow(values) {
   const out = { BC: '', FIT: '', SQ1: '' };
-  const scanRows = Math.min(values.length, 6);
+  // Only scan the rows above FIRST_DATA_ROW -- everything from there on is
+  // real apparatus data, not command-slot notes. Derived from FIRST_DATA_ROW
+  // (not a separate literal) so the two can't drift out of sync.
+  const scanRows = Math.min(values.length, FIRST_DATA_ROW - 1);
   for (let r = 0; r < scanRows; r++) {
     for (let c = 0; c < values[r].length; c++) {
       const cell = String(values[r][c] || '').trim();
       ['BC', 'FIT', 'SQ1'].forEach(function (label) {
-        if (new RegExp('^' + label + ':?\\s*', 'i').test(cell)) {
-          const rest = cell.replace(new RegExp('^' + label + ':?\\s*', 'i'), '').trim();
+        // \b after the label keeps this from matching a cell that merely
+        // STARTS WITH the label's letters (e.g. a name "Fitzgerald", or a
+        // unit code "BC1") -- it still matches "BC: Smith" or "BC Smith".
+        if (new RegExp('^' + label + '\\b:?\\s*', 'i').test(cell)) {
+          const rest = cell.replace(new RegExp('^' + label + '\\b:?\\s*', 'i'), '').trim();
           if (rest) out[label] = cell;
         }
       });
