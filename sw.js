@@ -1,6 +1,6 @@
 /* BFDLink — service worker
    BUMP THIS VERSION EVERY TIME YOU DEPLOY, or phones will keep the old links. */
-const CACHE = 'bfdlink-v10';
+const CACHE = 'bfdlink-v11';
 
 const SHELL = [
   './',
