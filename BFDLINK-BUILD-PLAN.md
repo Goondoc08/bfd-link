@@ -164,6 +164,14 @@ which the Apps Script returns. That covers the guardrail case (§4b originally):
 2. **Fail loud, not stale.** On fetch failure show last-good *explicitly labeled* with
    its timestamp, or an honest error. Never silently serve an old crew.
 
+**⚠ SUPERSEDED (Aug 14 2026).** The `dayFlag`-comparison check described in this section
+was replaced — CPTs sometimes finished updating the roster before getting to the dropdown,
+producing false "Not updated" badges. It now compares each unit's actual roster
+(position+name) against what it was the last time the tour day changed, computed
+server-side in `manning-apps-script.gs` (not client-side as originally planned below, so
+every phone agrees) so every phone sees the same answer. See that file's own comments for
+the current logic. Left the original rationale below for history.
+
 **But §4a's finding adds a second, more useful check.** Since the sheet's Day 1/Day 2
 flag *should* match `shift.js`'s own computed tour-day, the app can compare the two and
 flag any apparatus that's fallen behind — telling BC exactly which unit's CPT hasn't

@@ -12,8 +12,19 @@ kill it in one click if that's ever wanted — no need to loop us in either way.
 **What it hands out, precisely:** for each apparatus — the seats (position +
 name, exactly as typed on the sheet), each seat's listed activity if any, the
 unit's radio numbers if any, and the "Day 1 / Day 2" flag as typed. Plus
-BC/FIT/SQ1 if those are filled in, and a timestamp of when the sheet was last
-edited. Nothing else. No other tabs, no edit history, no formulas.
+BC/FIT/SQ1 if those are filled in, a timestamp of when the sheet was last
+edited, and whether that apparatus's roster is identical to what it was the
+last time the tour day changed (powers the app's "Not updated" badge — see
+below). Nothing else. No other tabs, no edit history, no formulas.
+
+**About the "Not updated" badge (added Aug 14 2026):** to compute it, the
+script keeps a small stored copy of each apparatus's position+name list —
+nothing else, not activity notes or radios — so it can compare today's
+roster against the last tour day's. That's the one thing this script retains
+between reads rather than reading fresh every time; it lives in the script's
+own private storage (Apps Script's PropertiesService), never touches the
+sheet, and is wiped along with everything else if the deployment is ever
+archived.
 
 **How often it actually reads the sheet:** not every time someone's phone
 asks. The script reads the sheet on its own schedule (every 15 minutes, via

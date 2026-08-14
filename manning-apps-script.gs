@@ -142,6 +142,7 @@ function buildPayload() {
 
   const command = readCommandRow(values);
   const units = parseUnits(values);
+  applyRosterTracking(units, new Date());
 
   const file = DriveApp.getFileById(ss.getId());
   const payload = {
@@ -151,6 +152,93 @@ function buildPayload() {
     units: units
   };
   return JSON.stringify(payload);
+}
+
+/* ============================================================
+   Roster-change tracking (replaces the old Day1/Day2 dropdown check)
+   ------------------------------------------------------------
+   The sheet's own "Day 1"/"Day 2" cell turned out to be an unreliable
+   staleness signal -- CPTs sometimes finish updating the roster before
+   they get to toggling that cell, which produced false "Not updated"
+   badges (BFDLink project notes, Aug 14 2026). Instead: compare each
+   unit's actual position+name roster against what it was the last time
+   the TOUR DAY changed (0700 boundary, same cutoff the rest of the app
+   uses). A unit whose roster is byte-for-byte identical to the previous
+   tour day is flagged -- on a normally-rotating unit that's a strong
+   signal nobody touched it today.
+
+   Deliberately NOT exempting solo/no-medic units (E1, E6 as of Aug 2026)
+   even though their crew is usually static across both tour days -- per
+   the user, those crews still change sometimes (vacation/OT coverage),
+   so a same-vs-different check is still meaningful for them too. They'll
+   show "Not updated" more often on genuinely-unchanged days; that's the
+   accepted tradeoff for never missing a real one.
+
+   State lives in PropertiesService (durable across the 10-min CacheService
+   TTL and across days, unlike CacheService), guarded by LockService since
+   multiple phones' requests -- and the scheduled trigger -- can overlap.
+   ============================================================ */
+
+const TOUR_TZ = 'America/Chicago';
+const ROSTER_STATE_KEY = 'bfdlink_roster_tracking_v1';
+
+function tourDayDateString(now) {
+  const hour = parseInt(Utilities.formatDate(now, TOUR_TZ, 'H'), 10);
+  const effectiveMs = now.getTime() - (hour < 7 ? 24 * 60 * 60 * 1000 : 0);
+  return Utilities.formatDate(new Date(effectiveMs), TOUR_TZ, 'yyyy-MM-dd');
+}
+
+function rosterSignature(seats) {
+  return (seats || []).map(function (s) {
+    return (s.position || '') + '|' + (s.name || '');
+  }).join(',');
+}
+
+/* Mutates `units` in place, adding `notUpdated: boolean` to each. */
+function applyRosterTracking(units, now) {
+  const todayDate = tourDayDateString(now);
+  const pastCutoff = parseInt(Utilities.formatDate(now, TOUR_TZ, 'H'), 10) >= 7;
+
+  const lock = LockService.getScriptLock();
+  let state;
+  try {
+    lock.waitLock(5000);
+    const props = PropertiesService.getScriptProperties();
+    const raw = props.getProperty(ROSTER_STATE_KEY);
+    state = raw ? JSON.parse(raw) : null;
+
+    if (!state || state.currentDate !== todayDate) {
+      // Tour day has advanced since state was last saved (or this is the
+      // very first run ever) -- today's about-to-be-recorded snapshot
+      // becomes tomorrow's comparison baseline, so roll what WAS "current"
+      // back to "previous" first.
+      state = {
+        previousDate: state ? state.currentDate : null,
+        previous: state ? state.current : {},
+        currentDate: todayDate,
+        current: {}
+      };
+    }
+
+    // Always refresh "current" to the latest roster reading, so a mid-day
+    // edit (e.g. a vacation swap-in) is captured for tomorrow's
+    // comparison, not just whatever the first read of the day saw.
+    const currentSnapshot = {};
+    units.forEach(function (u) {
+      currentSnapshot[u.unit] = rosterSignature(u.seats);
+    });
+    state.current = currentSnapshot;
+    props.setProperty(ROSTER_STATE_KEY, JSON.stringify(state));
+  } finally {
+    lock.releaseLock();
+  }
+
+  const previous = state.previous || {};
+  units.forEach(function (u) {
+    const sig = rosterSignature(u.seats);
+    const hadPrevious = Object.prototype.hasOwnProperty.call(previous, u.unit);
+    u.notUpdated = pastCutoff && hadPrevious && sig !== '' && sig === previous[u.unit];
+  });
 }
 
 /* Run this ONCE, by hand, from the Apps Script editor after deploying (see

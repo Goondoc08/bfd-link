@@ -12,8 +12,16 @@
    section 4, "Actual response shape"):
      { asOf, sheetModified,
        command: { BC, FIT, SQ1 },
-       units: [ { unit:"E1", dayFlag:"Day 1"|null,
+       units: [ { unit:"E1", dayFlag:"Day 1"|null, notUpdated: bool,
                   radios:[…], seats:[ { position, name, activity } ] } ] }
+
+   notUpdated is computed server-side (manning-apps-script.gs), not here --
+   it compares each unit's roster against what it was the last time the
+   tour day changed (0700 boundary), so every phone sees the same answer
+   regardless of when it happens to load. Replaced an earlier client-side
+   check against the sheet's own "Day 1"/"Day 2" dropdown cell, which
+   produced false "Not updated" badges when a CPT updated the roster before
+   getting to that cell (Aug 14 2026).
 
    Note seats here are {position,name,activity} OBJECTS, not the [pos,name]
    tuples the ported parser below expects (that shape came from hand-typing
@@ -28,34 +36,6 @@ const MANNING_CACHE_KEY = 'bfd-manning-lastgood';
 function manningEsc(s){
   return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ---------------- staleness: tours turn over at 0700, not midnight ----------------
-   Per BFDLINK-BUILD-PLAN.md section 4b (confirmed with Nick, Aug 12):
-     - shift.js's shiftFor() computes by calendar date, so before 0700 the
-       "expected" sheet value is still YESTERDAY's tour-day, not today's.
-     - CPTs typically update by ~0800. Flagging the 0700-0800 window would
-       flag every apparatus every single morning -- noise, not signal. No
-       mismatch flagging before 0800 at all.
-   This mirrors what the header's own shift bar does NOT do -- the header
-   always shows the correct calendar day the instant it flips (midnight),
-   because that's a different question ("what day is it") from "has this
-   apparatus's manning entry been updated for the tour that's now current." */
-function expectedTourDayLabel(now){
-  var eff = new Date(now);
-  if (now.getHours() < 7) eff.setDate(eff.getDate() - 1);
-  var s = shiftFor(eff.getFullYear(), eff.getMonth(), eff.getDate());
-  return 'Day ' + s.dayOf;
-}
-
-/* Blank reads the same as a match (nothing to flag) -- it isn't evidence
-   the manning is stale, just a unit whose sheet doesn't track this field at
-   all (every Medic/Truck row, as typed). The only thing worth surfacing is
-   a unit that DOES have a day value and it's wrong. */
-function isDayStale(dayFlag, now){
-  if (now.getHours() < 8) return false;
-  var norm = (dayFlag || '').trim();
-  return !!norm && norm !== expectedTourDayLabel(now);
 }
 
 /* ---------------- name-cell parser (ported from manning-card-preview.html,
@@ -257,7 +237,7 @@ function groupSeatRows(seats){
   return out;
 }
 
-function unitHTML(u, now){
+function unitHTML(u){
   var seats = groupSeatRows(u.seats);
   var narrow = !unitHasSplit(seats);
   var body;
@@ -268,7 +248,7 @@ function unitHTML(u, now){
     for (var i = 0; i < seats.length; i++) body += seatHTML(seats[i][0], seats[i][1], narrow, i + 1);
   }
 
-  var badge = isDayStale(u.dayFlag, now) ? '<span class="daybadge mismatch">Not updated</span>' : '';
+  var badge = u.notUpdated ? '<span class="daybadge mismatch">Not updated</span>' : '';
 
   return '<div class="unit' + (narrow ? ' narrow' : '') + '"><div class="unit-top"><span class="unit-code">' + manningEsc(unitFullName(u.unit)) + '</span>' + badge + '</div>' +
          '<div class="seats' + (narrow ? ' narrow' : '') + '">' + body + '</div></div>';
@@ -334,7 +314,7 @@ function groupIntoStations(units){
     var key = (st === null) ? 'unlisted' : st;
     if (!map[key]) map[key] = { station: st, units: [] };
     var seats = (u.seats || []).map(function(s){ return [s.position, s.name]; });
-    map[key].units.push({ unit: u.unit, dayFlag: u.dayFlag, seats: seats });
+    map[key].units.push({ unit: u.unit, notUpdated: !!u.notUpdated, seats: seats });
   }
   var out = [];
   for (var k in map) out.push(map[k]);
@@ -429,7 +409,7 @@ function renderManningInto(target, result){
     var stationLabel = (st.station === null) ? 'Unlisted' : ('Station ' + st.station);
     html += '<div class="station"><div class="station-h"><span>' + stationLabel + '</span><span class="line"></span></div><div class="units">';
     var units = sortUnits(st.units);
-    for (var ui = 0; ui < units.length; ui++) html += unitHTML(units[ui], now);
+    for (var ui = 0; ui < units.length; ui++) html += unitHTML(units[ui]);
     html += '</div></div>';
   }
   target.body.innerHTML = html;
