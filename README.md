@@ -26,8 +26,9 @@ Static PWA — no backend, no accounts, no analytics, nothing collected.
 | `index.html` | Everything else — layout, tiles, search, calendar, install/share |
 | `shift.js` | 48/96 rotation. Anchor: **Aug 11 2026 = B, day 1**, cycle `B B C C A A` |
 | `sw.js` | Service worker. **Bump `CACHE` every deploy** or phones keep the old links |
-| `icon-source-badge.png` | The real icon artwork (red/gold/white, chain-link + "BFD"), user-supplied. **This is the source of truth for icons now** — resize this, not `make-icons.py` |
-| `icon-source-badge-original.png` | Backup of the artwork exactly as first supplied, before the link-glyph resize (Aug 12) |
+| `icon-source-badge.png` | Rounded-square icon artwork (red/gold/white, chain-link + "BFD"), user-supplied (Aug 14 redesign). Source of truth for every **non-maskable** icon — `icon-64/180/192.png`, `icon-512.png`, `favicon-32.png` |
+| `icon-source-badge-round.png` | Circular version of the same artwork, user-supplied (Aug 14). Source of truth for `icon-maskable-512.png` specifically — full-bleed round content sidesteps the corner-clipping issue a square badge has under an aggressive circular OS mask |
+| `icon-source-badge-original.png` | Backup of the very first artwork supplied (Aug 11), before either the Aug 12 link-glyph resize or the Aug 14 full redesign. Historical only, not used to generate anything current |
 | `icon-64.png` | Pre-downsampled small icon for the header/sheets. **Don't delete** — see "Things that will bite you" |
 | `make-icons.py` | **Retired, do not run.** Old programmatic placeholder, superseded by the real artwork above |
 | `.dev-server.py` | Local preview with no-cache headers. Not deployed |
@@ -95,19 +96,26 @@ deliberate — see the `intranet` flag in `links.js`.
 The header brandmark and the two sheet icons use `icon-64.png`, not
 `icon-192.png` — pointing them at the 192px asset produced visible dark
 speckling at the ring's corners once the browser scaled it down to the ~26px
-CSS box (a ~7x shrink of a fine metallic gradient). Regenerating `icon-64.png`
-from a different master? Use `premult_resize` (see the git history around
-Aug 12 for the implementation) — Pillow's plain `Image.resize()` on RGBA can
-leak hidden RGB from fully-transparent regions into visible edges on a big
-downscale; premultiplying first avoids it regardless of what's hiding there.
+CSS box (a ~7x shrink of a fine metallic gradient).
 
-**The icon's "BFD" text is at its geometric maximum — don't try to grow it.**
-Measured directly (Aug 12): the text's own ink can't grow more than ~0.3%
-before it touches the ring frame — the original artwork already uses nearly
-all the available room. The link glyph has more headroom (currently shrunk to
-85% of original) if the balance ever needs revisiting again; growing the text
-further would need shrinking the ring/frame itself first, which is a bigger,
-different edit.
+**Regenerating any icon from a master? Two steps, not one — both matter.**
+(Learned twice: partially fixed Aug 12, the gap that caused finally closed
+Aug 14.) Pillow's plain `Image.resize()` on RGBA doesn't premultiply alpha
+first, so hidden RGB under fully-transparent source pixels can bleed into
+visible edges on a big downscale — premultiply, resize, then divide back out.
+**That alone isn't enough**: the premultiply/unpremultiply round trip still
+leaves pure black `(0,0,0,0)` at any output pixel that lands at true
+alpha=0 (0 × anything = 0), and a renderer that doesn't respect premultiplied
+alpha will sample that raw black. After resizing, explicitly overwrite every
+`alpha==0` pixel with the badge's own visible color (keeping alpha at 0).
+Current implementation: git history around Aug 14.
+
+**The icon composition changed Aug 14** — new user-supplied artwork
+(`icon-source-badge.png` rounded-square, `icon-source-badge-round.png`
+circular) replaced the Aug 11/12 original, with the badge content filling
+noticeably more of the frame. The old "BFD text is at its geometric maximum"
+measurement no longer applies to this artwork — re-measure before relying on
+it if the balance ever needs revisiting again.
 
 ---
 
