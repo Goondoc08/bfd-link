@@ -333,14 +333,20 @@ const LINKS = [
         // still where myuhc.com sends you to sign in, so this isn't
         // removing a step, just pointing at the front door instead of a
         // mid-flow redirect target that could change without notice.
+        // web + ios re-verified Aug 14, both still correct.
         //
-        // android was also wrong until this pass: com.mobile.uhc doesn't
-        // exist — the real UnitedHealthcare package (verified via the
-        // iTunes/Play listings, same publisher) is com.uhg.mobile.uhc.
+        // android fixed AGAIN (Aug 14) — com.uhg.mobile.uhc (set on the
+        // Aug 12 pass, after com.mobile.uhc was believed dead at the time)
+        // now 404s itself. Re-verified in-browser: com.mobile.uhc is live
+        // again right now (publisher "UNITED HEALTHCARE SERVICES, INC.",
+        // 5M+ downloads, 4.6 stars) -- these UHC package IDs appear to
+        // come and go, so don't assume either one is permanent; re-check
+        // in-browser next time this gets reported, don't just trust this
+        // comment.
         name: "Health Insurance",
         desc: "UnitedHealthcare — myuhc.com",
         url: "https://www.myuhc.com/",
-        android: "https://play.google.com/store/apps/details?id=com.uhg.mobile.uhc",
+        android: "https://play.google.com/store/apps/details?id=com.mobile.uhc",
         ios: "https://apps.apple.com/us/app/id1348316600",
         app: true, store: true
       },
@@ -431,12 +437,18 @@ const LINKS = [
         //
         // ERG (US DOT / PHMSA) and CAMEO Chemicals (NOAA) are the current,
         // free, actively-maintained replacements and are what NLM's own
-        // shutdown notice points people toward. Both store IDs below
-        // re-verified Aug 12 — unchanged, still correct.
+        // shutdown notice points people toward.
+        //
+        // android fixed (Aug 14) — gov.dot.phmsa.erg2 404s now (confirmed
+        // in-browser). Reported broken by a user; gov.nih.nlm.erg2012 is
+        // the correct current package (re-verified in-browser: "ERG for
+        // Android", publisher PHMSA, 1M+ downloads, official USDOT ERG —
+        // the odd nih.nlm namespace is just historical, not a wrong app).
+        // ios re-verified Aug 14, still correct, unchanged.
         name: "ERG",
         desc: "DOT Emergency Response Guidebook — hazmat",
-        url: "https://play.google.com/store/apps/details?id=gov.dot.phmsa.erg2",
-        android: "https://play.google.com/store/apps/details?id=gov.dot.phmsa.erg2",
+        url: "https://play.google.com/store/apps/details?id=gov.nih.nlm.erg2012",
+        android: "https://play.google.com/store/apps/details?id=gov.nih.nlm.erg2012",
         ios: "https://apps.apple.com/us/app/id1597142669",
         app: true, store: true
       },
