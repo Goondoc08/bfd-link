@@ -615,12 +615,14 @@
   .faqbody .faqintro{font-size:12.5px;color:var(--dim);line-height:1.5;margin:10px 0 0}
   .faqbody ul.ck{list-style:none;margin:8px 0 0;padding:0}
   .faqbody ul.ck li{
-    display:flex;gap:9px;align-items:flex-start;padding:5px 0;
+    display:flex;gap:10px;align-items:flex-start;padding:5px 0;
     font-size:12.5px;color:var(--dim);line-height:1.5;
   }
+  /* Plain bullet, not a checkbox -- a hollow square read as tappable even
+     though nothing here is interactive (reported after shipping). */
   .faqbody ul.ck li::before{
-    content:"";flex:0 0 auto;width:12px;height:12px;margin-top:2px;
-    border:1.6px solid var(--faint);border-radius:4px;
+    content:"";flex:0 0 auto;width:5px;height:5px;margin-top:7px;
+    border-radius:50%;background:var(--faint);
   }
   .crow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
   .crow:last-child{border-bottom:0}
@@ -957,7 +959,7 @@
     <div class="faqbody">
       <h4>Working hours — Mon–Fri, 7:00 AM–5:00 PM</h4>
       <div class="crow">
-        <div class="cinfo"><div class="cnm">IT Help Desk</div><div class="csub">x5813</div></div>
+        <div class="cinfo"><div class="cnm">IT Help Desk</div><div class="csub">281-420-5813 (x5813)</div></div>
         <a class="cdial" href="tel:+12814205813">Call</a>
       </div>
       <div class="crow">
@@ -969,15 +971,15 @@
       <h4>After hours — emergency support</h4>
       <p class="faqintro">Call in order — move to the next number if there's no answer.</p>
       <div class="crow">
-        <div class="cinfo"><div class="cnm">1. First call</div></div>
-        <a class="cdial" href="tel:+12814205801">x5801</a>
+        <div class="cinfo"><div class="cnm">1. First call</div><div class="csub">281-420-5801 (x5801)</div></div>
+        <a class="cdial" href="tel:+12814205801">Call</a>
       </div>
       <div class="crow">
-        <div class="cinfo"><div class="cnm">2. If no answer</div><div class="csub">Leave a message; wait 10 min for a call back before the next number.</div></div>
+        <div class="cinfo"><div class="cnm">2. If no answer</div><div class="csub">281-839-6406 — leave a message; wait 10 min for a call back before the next number.</div></div>
         <a class="cdial" href="tel:+12818396406">Call</a>
       </div>
       <div class="crow">
-        <div class="cinfo"><div class="cnm">3. ITS Director</div></div>
+        <div class="cinfo"><div class="cnm">3. ITS Director</div><div class="csub">281-739-0429</div></div>
         <a class="cdial" href="tel:+12817390429">Call</a>
       </div>
     </div>

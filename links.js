@@ -113,6 +113,12 @@ const LINKS = [
         pinned: true
       },
       {
+        // Added Sep 21 2026, moved here (next to ESO) Sep 21 2026.
+        name: "ImageTrend",
+        desc: "ImageTrend Elite",
+        url: "https://amgh.imagetrendelite.com/Elite/Organizationamgh/"
+      },
+      {
         // No auto-open for Pulsara on either platform — this is a confirmed
         // dead end, not an unfinished attempt. Pearland Fire Link tested it:
         //   - "pulsara://" (a guess) tested false: fell through to the web
@@ -189,12 +195,6 @@ const LINKS = [
         url: "https://blood.dev/",
         android: "https://play.google.com/store/apps/details?id=com.deltadevteam.APRU",
         app: true, store: true
-      },
-      {
-        // Added Sep 21 2026.
-        name: "ImageTrend",
-        desc: "ImageTrend Elite",
-        url: "https://amgh.imagetrendelite.com/Elite/Organizationamgh/"
       }
     ]
   },
