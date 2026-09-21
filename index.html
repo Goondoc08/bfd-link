@@ -48,6 +48,9 @@
        "not updated" badge and the not-yet-entered dot, red for the divider
        under a unit's name and the "unclear" tag. Not reused elsewhere. */
     --amber:#e0a52c; --red:#e0483a;
+    /* Pay-period calendar bars only. Reuses the existing accent pair
+       (gold var/amber) rather than inventing two more colors. */
+    --pp120:var(--gold); --pp96:var(--amber);
     --r:14px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -80,6 +83,20 @@
     padding:0 0 1px 0;
   }
   .infobtn:active{background:rgba(224,135,58,.16)}
+
+  /* shift-select button -- blank dashed circle until a shift is picked,
+     then a solid circle in that shift's color. Sits next to .infobtn and
+     shares its sizing on purpose (same visual weight, same row). */
+  .shiftbtn{
+    flex:0 0 auto; width:28px;height:28px;border-radius:50%;
+    border:1.6px dashed var(--faint); background:none; color:var(--faint);
+    font:800 13px inherit; cursor:pointer;
+    display:flex;align-items:center;justify-content:center;padding:0;
+  }
+  .shiftbtn.set{border-style:solid}
+  .shiftbtn.sA{background:var(--a);border-color:var(--a);color:#2a0a06}
+  .shiftbtn.sB{background:var(--b);border-color:var(--b);color:#04121f}
+  .shiftbtn.sC{background:var(--c);border-color:var(--c);color:#04190d}
 
   /* shift bar */
   .shiftbar{
@@ -136,8 +153,19 @@
   .day.a .s{color:var(--a)} .day.b .s{color:var(--b)} .day.c .s{color:var(--c)}
   .day.today{outline:2px solid var(--txt);outline-offset:-2px}
   .day.today .n{color:var(--txt);font-weight:700}
-  .callegend{display:flex;gap:14px;justify-content:center;margin-top:9px;font-size:11px;color:var(--dim)}
+  /* Pay-period start/end markers -- only drawn once a shift is set (see
+     drawCal()), colored by that period's total hours. A period boundary
+     day can be both start and end of DIFFERENT periods only in theory
+     (never in practice at 14-day length), so left/right is safe to use
+     for both without collision. */
+  .day.pp-start-120{border-left:3px solid var(--pp120)}
+  .day.pp-start-96{border-left:3px solid var(--pp96)}
+  .day.pp-end-120{border-right:3px solid var(--pp120)}
+  .day.pp-end-96{border-right:3px solid var(--pp96)}
+  .callegend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:9px;font-size:11px;color:var(--dim)}
   .callegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+  .callegend i.bar-l{background:none;border-left:3px solid var(--pp120)}
+  .callegend i.bar-r{background:none;border-left:3px solid var(--pp96)}
 
   /* ---------- manning (live view) ----------
      Card format ported from manning-card-preview.html, approved "format
@@ -339,6 +367,7 @@
     .icol-left{grid-column:1;position:relative}
     .icol-right{grid-column:2}
     .wrap > footer{grid-column:1/-1}
+    .wrap > .shiftnudge{grid-column:1/-1}
 
     .hdr-in{
       max-width:1500px;margin:0 auto;
@@ -358,6 +387,7 @@
        space beyond that has to go somewhere, or the info button strands
        right after search with a dead gap to the true right edge. */
     .infobtn{order:4;margin-left:auto}
+    .shiftbtn{order:5}
     #shiftbar{display:none}
 
     /* No `top` set on purpose — for an absolutely positioned box, auto/auto
@@ -484,6 +514,20 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* One-time nudge to set a shift, shown until dismissed or a shift is
+     picked (see maybeShowShiftNudge()) -- a banner in the normal page
+     flow, not a timed toast, since the whole point is to not be missed. */
+  .shiftnudge{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--panel2);border:1px solid var(--gold);border-radius:12px;
+    padding:10px 12px;margin:12px 0;font-size:13px;line-height:1.4;color:var(--txt);
+  }
+  .shiftnudge[hidden]{display:none}
+  .shiftnudge-btns{display:flex;gap:8px;margin-left:auto;flex:0 0 auto}
+  .shiftnudge button{border:0;border-radius:8px;cursor:pointer;font-family:inherit}
+  #shiftnudge-set{background:var(--gold);color:#0b1f1c;font:700 12.5px inherit;padding:7px 12px}
+  #shiftnudge-x{background:none;color:var(--dim);font-size:19px;line-height:1;padding:2px 7px}
+
   /* ---------- sheets ---------- */
   .sheetwrap{
     position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.6);
@@ -509,6 +553,27 @@
     background:var(--panel2); color:var(--txt);
   }
   .isheet button.primary{background:var(--gold);border-color:var(--gold);color:#20160a;font-weight:700}
+
+  /* shift-pick sheet: three big lettered buttons, outlined in each shift's
+     own color, filled solid once picked (re-opening the sheet shows which
+     one is current). */
+  .shiftpick-grid{display:flex;gap:10px;margin-top:2px}
+  .shiftpick-opt{
+    flex:1;padding:20px 0;border-radius:14px;font:800 26px inherit;
+    cursor:pointer;background:var(--panel2);
+  }
+  .shiftpick-opt.sA{border:2px solid var(--a);color:var(--a)}
+  .shiftpick-opt.sB{border:2px solid var(--b);color:var(--b)}
+  .shiftpick-opt.sC{border:2px solid var(--c);color:var(--c)}
+  .shiftpick-opt.sA.picked{background:var(--a);color:#2a0a06}
+  .shiftpick-opt.sB.picked{background:var(--b);color:#04121f}
+  .shiftpick-opt.sC.picked{background:var(--c);color:#04190d}
+
+  /* Blocking pay-period reminder -- visually distinct (colored top edge)
+     from the casual info sheets, and deliberately has NO backdrop-tap or
+     Escape close wired in the JS (see "PAY PERIOD REMINDER" below) --
+     "Okay" is the only way out. */
+  .isheet.payreminder{border-top:3px solid var(--gold)}
 
   .faq{max-height:82vh;display:flex;flex-direction:column;padding:0}
   .faqhead{
@@ -575,6 +640,8 @@
       <h1>BFDLink</h1>
       <button class="infobtn" id="infobtn" type="button"
               aria-label="Tips and known limitations">i</button>
+      <button class="shiftbtn" id="shiftbtn" type="button"
+              aria-label="Set your shift"></button>
     </div>
 
     <button class="shiftbar" id="shiftbar" aria-expanded="false">
@@ -597,6 +664,14 @@
 </header>
 
 <div class="wrap">
+  <div class="shiftnudge" id="shiftnudge" hidden>
+    <span>🆕 Set your shift to see your pay periods on the calendar and get reminded before one closes.</span>
+    <div class="shiftnudge-btns">
+      <button id="shiftnudge-set" type="button">Set shift</button>
+      <button id="shiftnudge-x" type="button" aria-label="Dismiss">×</button>
+    </div>
+  </div>
+
   <div class="icol-left">
     <div class="shiftbar shiftbar-static" id="dsk-today">
       <span class="lt" id="dsk-lt">–</span>
@@ -629,6 +704,8 @@
           <span><i style="background:var(--a)"></i>A</span>
           <span><i style="background:var(--b)"></i>B</span>
           <span><i style="background:var(--c)"></i>C</span>
+          <span id="pp-legend" hidden><i class="bar-l"></i>120hr PP <i class="bar-r"></i>96hr PP</span>
+          <span id="pp-legend-hint" style="color:var(--faint)" hidden>set your shift to see your pay periods</span>
         </div>
       </div>
     </div>
@@ -785,6 +862,45 @@
   </div>
 </div>
 
+<div class="sheetwrap" id="shiftpickwrap" hidden>
+  <div class="isheet" role="dialog" aria-modal="true" aria-labelledby="shiftpick-h">
+    <div class="top">
+      <img src="icon-64.png" alt="">
+      <div>
+        <h3 id="shiftpick-h">Set your shift</h3>
+        <div class="sub">Shows your pay periods on the calendar and reminds you before one closes.</div>
+      </div>
+    </div>
+    <div class="shiftpick-grid">
+      <button type="button" class="shiftpick-opt sA" data-shift="A">A</button>
+      <button type="button" class="shiftpick-opt sB" data-shift="B">B</button>
+      <button type="button" class="shiftpick-opt sC" data-shift="C">C</button>
+    </div>
+  </div>
+</div>
+
+<!-- Deliberately NOT wired to close on backdrop tap or Escape (see
+     PAY PERIOD REMINDER in the script below) -- "Okay" is the only way
+     out, per spec. -->
+<div class="sheetwrap" id="payreminderwrap" hidden>
+  <div class="isheet payreminder" role="alertdialog" aria-modal="true" aria-labelledby="payreminder-h">
+    <div class="top">
+      <img src="icon-64.png" alt="">
+      <div>
+        <h3 id="payreminder-h">Last shift this pay period</h3>
+        <div class="sub" id="payreminder-sub"></div>
+      </div>
+    </div>
+    <p style="font-size:13.5px;color:var(--dim);line-height:1.55;margin:0 0 14px">
+      Don't forget to review and approve your ExecuTime hours before it processes.
+    </p>
+    <div class="btns">
+      <button type="button" id="payreminder-exec">Open ExecuTime</button>
+      <button type="button" id="payreminder-ok" class="primary">Okay</button>
+    </div>
+  </div>
+</div>
+
 <!-- Mobile/tablet equivalent of #manning-rail (see the CSS comment there) --
      same renderManningInto() target, opened by tapping the Daily Manning
      tile instead of always being on screen. -->
@@ -824,6 +940,7 @@
 </div>
 
 <script src="shift.js"></script>
+<script src="payroll.js"></script>
 <script src="manning.js"></script>
 <script src="links.js"></script>
 <script>
@@ -866,6 +983,124 @@ function renderShiftBar(){
 }
 renderShiftBar();
 
+/* ============================================================
+   SHIFT SELECTION
+   Which platoon (A/B/C) YOU are on -- stored per device, nowhere else.
+   Powers the pay-period bars on the calendar and the last-shift-of-period
+   reminder below. Nothing here is BFD-wide data; it's purely "what this
+   phone should show."
+   ============================================================ */
+const MY_SHIFT_KEY = 'bfd-my-shift';
+function getMyShift(){
+  const s = localStorage.getItem(MY_SHIFT_KEY);
+  return (s === 'A' || s === 'B' || s === 'C') ? s : null;
+}
+function renderShiftBtn(){
+  const btn = document.getElementById('shiftbtn');
+  const shift = getMyShift();
+  Array.from(btn.classList).forEach(c => { if (/^s[A-Z]$/.test(c)) btn.classList.remove(c); });
+  if (shift){
+    btn.classList.add('set', 's' + shift);
+    btn.textContent = shift;
+    btn.setAttribute('aria-label', 'Your shift: ' + shift + ' shift — tap to change');
+  } else {
+    btn.classList.remove('set');
+    btn.textContent = '';
+    btn.setAttribute('aria-label', 'Set your shift');
+  }
+}
+renderShiftBtn();
+
+const shiftPickWrap = document.getElementById('shiftpickwrap');
+function openShiftPick(){
+  const cur = getMyShift();
+  document.querySelectorAll('.shiftpick-opt').forEach(b => {
+    b.classList.toggle('picked', b.dataset.shift === cur);
+  });
+  shiftPickWrap.hidden = false;
+}
+function closeShiftPick(){ shiftPickWrap.hidden = true; }
+document.getElementById('shiftbtn').onclick = openShiftPick;
+shiftPickWrap.onclick = e => { if (e.target === shiftPickWrap) closeShiftPick(); };
+document.querySelectorAll('.shiftpick-opt').forEach(b => {
+  b.onclick = () => {
+    localStorage.setItem(MY_SHIFT_KEY, b.dataset.shift);
+    closeShiftPick();
+    renderShiftBtn();
+    drawCal();
+    dismissShiftNudge();
+    checkPayReminder();
+  };
+});
+
+/* One-time nudge (see the CSS comment on .shiftnudge) -- shown until
+   dismissed or a shift is picked, never again after either. */
+const SHIFT_NUDGE_KEY = 'bfd-shift-nudge-seen';
+function maybeShowShiftNudge(){
+  if (getMyShift() || localStorage.getItem(SHIFT_NUDGE_KEY)) return;
+  document.getElementById('shiftnudge').hidden = false;
+}
+function dismissShiftNudge(){
+  document.getElementById('shiftnudge').hidden = true;
+  localStorage.setItem(SHIFT_NUDGE_KEY, '1');
+}
+document.getElementById('shiftnudge-set').onclick = () => { dismissShiftNudge(); openShiftPick(); };
+document.getElementById('shiftnudge-x').onclick = dismissShiftNudge;
+maybeShowShiftNudge();
+
+/* ============================================================
+   PAY PERIOD REMINDER
+   Fires once per pay period, the first time the app is opened on or
+   after the FIRST day of the user's last on-duty tour that period (see
+   lastTourStartInPeriod() in payroll.js) -- entirely computed on this
+   device from the date + selected shift, no push infrastructure, no
+   server. Deliberately a blocking modal (no backdrop-tap or Escape close
+   wired for #payreminderwrap -- see the sheetwrap markup above) rather
+   than the dismissible toast/sheet pattern everything else here uses,
+   per spec: this one shouldn't be swipeable-away by accident.
+   ============================================================ */
+const PAY_REMINDER_ACK_KEY = 'bfd-pp-reminder-ack';
+function checkPayReminder(){
+  const shift = getMyShift();
+  if (!shift) return;
+  const todayMs = Date.UTC(TY, TM, TD);
+  const periodStart = payPeriodStart(todayMs);
+  const triggerMs = lastTourStartInPeriod(shift, periodStart);
+  if (triggerMs === null || todayMs < triggerMs) return;
+  const ackKey = String(periodStart);
+  if (localStorage.getItem(PAY_REMINDER_ACK_KEY) === ackKey) return;
+  const periodEndDate = new Date(periodStart + 13 * PAY_DAY);
+  // periodEndDate is a UTC-midnight timestamp standing in for a calendar
+  // date (same convention as the rest of payroll.js) -- without
+  // timeZone:'UTC' here, toLocaleDateString renders it in the browser's
+  // local zone, which is a day behind for anyone west of UTC (caught by
+  // testing: showed Oct 3 for a period that actually ends Oct 4).
+  document.getElementById('payreminder-sub').textContent =
+    'Pay period closes ' +
+    periodEndDate.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric', timeZone:'UTC'}) + '.';
+  const wrap = document.getElementById('payreminderwrap');
+  wrap.dataset.ackKey = ackKey;
+  wrap.hidden = false;
+}
+document.getElementById('payreminder-ok').onclick = () => {
+  const wrap = document.getElementById('payreminderwrap');
+  localStorage.setItem(PAY_REMINDER_ACK_KEY, wrap.dataset.ackKey);
+  wrap.hidden = true;
+};
+document.getElementById('payreminder-exec').onclick = () => {
+  const it = allItems().find(i => i.name === 'Executime');
+  if (!it) return;
+  if (it.intranet){
+    copyText(it.url).then(ok => {
+      toast(ok ? 'Address copied — open it on a city computer'
+               : 'Could not copy. Long-press the tile to copy the link.');
+    });
+  } else {
+    window.open(it.url, '_blank', 'noopener');
+  }
+};
+checkPayReminder();
+
 /* ---------- calendar ---------- */
 let calY = TY, calM = TM;
 const MON = ['January','February','March','April','May','June',
@@ -880,10 +1115,19 @@ function drawCal(){
   const len   = new Date(calY, calM + 1, 0).getDate();
   let html = '';
   for (let i = 0; i < first; i++) html += '<div class="day pad"></div>';
+  const myShift = getMyShift();
+  document.getElementById('pp-legend').hidden = !myShift;
+  document.getElementById('pp-legend-hint').hidden = !!myShift;
   for (let d = 1; d <= len; d++){
     const s = shiftFor(calY, calM, d);
     const isToday = (d === TD && calM === TM && calY === TY);
-    html += `<div class="day ${s.letter.toLowerCase()}${isToday ? ' today' : ''}">
+    let extraCls = '';
+    if (myShift){
+      const pp = payPeriodInfo(Date.UTC(calY, calM, d), myShift);
+      if (pp.isStart) extraCls += ` pp-start-${pp.hours}`;
+      if (pp.isEnd)   extraCls += ` pp-end-${pp.hours}`;
+    }
+    html += `<div class="day ${s.letter.toLowerCase()}${isToday ? ' today' : ''}${extraCls}">
                <span class="n">${d}</span><span class="s">${s.letter}</span>
              </div>`;
   }
@@ -925,6 +1169,7 @@ document.addEventListener('visibilitychange', () => {
   if (wasViewingCurrentMonth) { calY = TY; calM = TM; }
   renderShiftBar();
   drawCal();
+  checkPayReminder();
 });
 
 /* ============================================================
@@ -1317,6 +1562,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !faqWrap.hidden) closeFaq();
   if (e.key === 'Escape' && !document.getElementById('soonwrap').hidden) document.getElementById('soonwrap').hidden = true;
   if (e.key === 'Escape' && !document.getElementById('manningwrap').hidden) document.getElementById('manningwrap').hidden = true;
+  if (e.key === 'Escape' && !shiftPickWrap.hidden) closeShiftPick();
+  // #payreminderwrap deliberately has no Escape handling -- see its markup.
 });
 
 /* ============================================================

@@ -25,6 +25,7 @@ Static PWA — no backend, no accounts, no analytics, nothing collected.
 | `links.js` | **The only file you need to edit to add or fix a link.** Heavily commented. |
 | `index.html` | Everything else — layout, tiles, search, calendar, install/share |
 | `shift.js` | 48/96 rotation. Anchor: **Aug 11 2026 = B, day 1**, cycle `B B C C A A` |
+| `payroll.js` | Pay periods (14-day, 120/120/96hr cycle per shift) + the last-shift-of-period reminder trigger. Added Sep 21 2026 — see `BFDLINK-BUILD-PLAN.md` §10 for the derivation |
 | `sw.js` | Service worker. **Bump `CACHE` every deploy** or phones keep the old links |
 | `icon-source-badge.png` | Rounded-square icon artwork (red/gold/white, chain-link + "BFD"), user-supplied (Aug 14 redesign). Source of truth for every **non-maskable** icon — `icon-64/180/192.png`, `icon-512.png`, `favicon-32.png` |
 | `icon-source-badge-round.png` | Circular version of the same artwork, user-supplied (Aug 14). Source of truth for `icon-maskable-512.png` specifically — full-bleed round content sidesteps the corner-clipping issue a square badge has under an aggressive circular OS mask |

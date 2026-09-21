@@ -388,3 +388,57 @@ actively improves the app, since link lists rot.
 - **Phase 4 — optional.** Embedded Forms; manning history tab (only if admin wants it).
 
 Phases 1–2 are a complete, shippable app on their own.
+
+## 10. Pay periods & shift selection (added Sep 21 2026)
+
+**Shift selector.** No such thing existed before this — added specifically because pay
+periods and the reminder below both need to know which platoon (A/B/C) the phone's owner
+is on. Stored in `localStorage` (`bfd-my-shift`), device-local, nothing shared or synced.
+Round button next to the info button in the header: blank dashed circle until set, solid
+circle in the shift's own color (`--a`/`--b`/`--c`) once picked. Tapping it (blank or
+filled) opens a small sheet to pick/change — always re-selectable, never locks in.
+One-time banner (`.shiftnudge`) nudges anyone who hasn't set one; shown once ever, whether
+dismissed via × or satisfied by actually picking a shift.
+
+**Pay period math — mechanically derived, not from a payroll document.** User gave the
+raw facts: pay period ends Sun Sep 20 2026, repeats every 14 days; payday is 5 days later
+(Sep 25), also every 14 days. Unlike Pearland Fire Link's `payroll.js` (built from an
+actual "FY 27 Pay calendar.xlsx"), BFD had no equivalent document — so the 96/120-hour
+pattern was derived by running `shift.js`'s own rotation against a 14-day window and
+counting on-days per shift, period by period:
+
+| Period | A | B | C |
+|---|---|---|---|
+| 2026-09-07 → 09-20 | 120 | 96 | 120 |
+| 2026-09-21 → 10-04 | 120 | 120 | 96 |
+| 2026-10-05 → 10-18 | 96 | 120 | 120 |
+| 2026-10-19 → 11-01 | 120 | 96 | 120 |
+
+This isn't a coincidence — a 6-day (2-on/4-off) rotation against a 14-day pay period
+mechanically produces a 120/120/96-hour pattern repeating every 3 periods (42 days), one
+shift drawing the 96hr period each cycle, rotating — the exact same structural pattern
+Pearland's real payroll sheet has, just a different phase. `payroll.js` encodes this as
+`PAY_ANCHOR` (period start, Sep 7 2026) + `PAY_HOURS_CYCLE` `[120,120,96]` +
+`PAY_SHIFT_PHASE` `{A:0, B:2, C:1}` (solved algebraically from the table above, then
+verified in Node against the full table before shipping). **Not independently confirmed
+against a real BFD pay stub or HR calendar** — if the displayed hours for any period ever
+turn out wrong, that's the first thing to re-check, not the rotation math (which is
+already proven correct against `shift.js`).
+
+Calendar integration copies Pearland's pattern exactly: `.day.pp-start-120/96` and
+`.day.pp-end-120/96` (colored left/right border), a legend entry that's hidden until a
+shift is set (`#pp-legend` / `#pp-legend-hint`).
+
+**"Last shift this pay period" reminder — local only, no push notifications.** Explicitly
+NOT a third-party push service (privacy stance) and explicitly not a system notification
+at all — a full-screen blocking modal (`#payreminderwrap`), no backdrop-tap or Escape
+close, "Okay" is the only way out (plus a second button that opens ExecuTime directly,
+reusing the same intranet copy-to-clipboard behavior as its tile). Trigger day is the
+FIRST day of the user's LAST on-duty tour that *starts* within the current pay period
+(`lastTourStartInPeriod()` in `payroll.js`) — confirmed via Node that this sometimes lands
+exactly on the period's last day, with the tour's second day rolling into the next period
+(14 isn't a multiple of 6, so tours don't always align to period boundaries); still the
+right day to trigger on. Shown the first time the app opens on/after that day; "Okay"
+records that period's start date in `localStorage` (`bfd-pp-reminder-ack`) so it won't
+show again until the next period's equivalent day arrives. Checked on load, on shift pick,
+and in the existing midnight-rollover `visibilitychange` handler.

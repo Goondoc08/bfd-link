@@ -1,12 +1,13 @@
 /* BFDLink — service worker
    BUMP THIS VERSION EVERY TIME YOU DEPLOY, or phones will keep the old links. */
-const CACHE = 'bfdlink-v15';
+const CACHE = 'bfdlink-v16';
 
 const SHELL = [
   './',
   './index.html',
   './links.js',
   './shift.js',
+  './payroll.js',
   './manning.js',
   './manifest.json',
   './icon-64.png',
