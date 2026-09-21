@@ -607,6 +607,33 @@
   }
   .faqfoot a{color:var(--dim)}
 
+  /* ---------- info sheets: Monthly Maintenance, IT Contact ----------
+     Both reuse the .faq shell (scrollable body, same head/foot). Checklist
+     rows for Monthly Maintenance, contact rows with tappable tel:/mailto:
+     pills for IT Contact -- same visual language as the rest of the sheet,
+     not a separate design system. */
+  .faqbody .faqintro{font-size:12.5px;color:var(--dim);line-height:1.5;margin:10px 0 0}
+  .faqbody ul.ck{list-style:none;margin:8px 0 0;padding:0}
+  .faqbody ul.ck li{
+    display:flex;gap:9px;align-items:flex-start;padding:5px 0;
+    font-size:12.5px;color:var(--dim);line-height:1.5;
+  }
+  .faqbody ul.ck li::before{
+    content:"";flex:0 0 auto;width:12px;height:12px;margin-top:2px;
+    border:1.6px solid var(--faint);border-radius:4px;
+  }
+  .crow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .crow:last-child{border-bottom:0}
+  .crow .cinfo{flex:1;min-width:0}
+  .crow .cnm{font-size:13.5px;font-weight:650;color:var(--txt)}
+  .crow .csub{font-size:12px;color:var(--dim);margin-top:1px;line-height:1.4}
+  .crow .cdial{
+    flex:0 0 auto;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+    padding:7px 12px;color:var(--txt);text-decoration:none;font-size:13px;font-weight:700;
+    white-space:nowrap;
+  }
+  .crow .cdial:active{background:var(--line)}
+
   /* manning sheet's own head/foot bits, layered onto the shared .faq/.isheet
      sheet chrome above rather than duplicating it */
   .faqhead .mp-refresh{font-size:16px;padding:3px 6px}
@@ -783,9 +810,16 @@
         <dt><span class="tag b-live">Live</span> Daily Manning</dt>
         <dd>Opens today's crew by station right in the app instead of the sheet —
             "as of" up top is when the sheet itself was last edited, and ⟳ pulls a
-            fresh copy on demand. A unit shows <b>Not updated</b> if its Day 1/Day 2
-            flag still doesn't match today's actual tour after 0800 — before that,
-            it's normal for it to still say yesterday's, so nothing gets flagged.</dd>
+            fresh copy on demand. A unit shows <b>Not updated</b> if its roster is
+            identical to the last tour day, after 0700 — a real signal nobody's
+            touched it yet, not just a dropdown someone forgot to flip.</dd>
+
+        <dt>Set your shift</dt>
+        <dd>The blank circle next to this ⓘ button sets your shift (A/B/C) — it's
+            what lets the calendar show your pay periods (120hr vs 96hr, marked by
+            the colored edge on each period's start/end day) and reminds you before
+            one closes. Tap it any time to change it. Nothing is shared — it's saved
+            on your phone only.</dd>
 
         <dt>Using OnePass</dt>
         <dd>OnePass is UHC's separate fitness &amp; wellness rewards app — gym
@@ -814,6 +848,10 @@
         <dd>BFD hasn't sent over what's needed for these yet (a form, a document).
             They'll switch to real links as soon as that comes in.</dd>
 
+        <dt>Monthly Maintenance and IT Contact open in the app</dt>
+        <dd>These aren't links out — the schedule and contact numbers are built
+            right into the app, so they work with no signal.</dd>
+
         <dt>Search only covers tile names</dt>
         <dd>It matches link names and descriptions, <b>not the text inside pages</b>.
             No typo tolerance either.</dd>
@@ -825,10 +863,6 @@
 
       <h4>Not built yet</h4>
       <dl>
-        <dt>Monthly maintenance schedule</dt>
-        <dd>Policy 1100.3 as a real page — what's assigned, which days fall on your
-            shift. Coming next.</dd>
-
         <dt>Opening apps directly</dt>
         <dd>App tiles go to the store listing for now. Each one gets switched to
             open-the-app-directly only after it's tested on a real phone.</dd>
@@ -840,6 +874,114 @@
       hosted or copied here. Something wrong or missing?
       <a id="faq-report" href="#">Send it over</a>.
     </div>
+  </div>
+</div>
+
+<!-- Info sheets: reference content that lives in the app instead of a link
+     out. Opened via the `info` flag in links.js (see the doc comment at
+     the top of that file) — INFO_SHEETS in the script below maps each id
+     to its wrap element. -->
+<div class="sheetwrap" id="maintenancewrap" hidden>
+  <div class="isheet faq" role="dialog" aria-modal="true" aria-labelledby="maint-h">
+    <div class="faqhead">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 11l2 2 4-4"/>
+      </svg>
+      <h3 id="maint-h">Monthly Maintenance</h3>
+      <button id="maint-x" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="faqbody">
+      <p class="faqintro">First full week of the month, split by day.</p>
+
+      <h4>Monday — Windows and furniture</h4>
+      <ul class="ck">
+        <li>Clean insides and outsides of windows</li>
+        <li>Clean blinds</li>
+        <li>Clean furniture and vacuum underneath</li>
+        <li>Wash and dry all comforters</li>
+        <li>Clean and dust all desks and remove unnecessary items from drawers</li>
+        <li>Polish wood furniture</li>
+        <li>Treat leather furniture</li>
+      </ul>
+
+      <h4>Tuesday — Kitchen and foyers, halls, and stairways</h4>
+      <ul class="ck">
+        <li>Clean insides of kitchen cabinets and appliances</li>
+        <li>Clean outsides of kitchen cabinets and appliances</li>
+        <li>Clean out refrigerators</li>
+        <li>Clean bulletin boards and remove outdated, unnecessary, or inappropriate items</li>
+        <li>Sweep and mop stairways</li>
+        <li>Dust handrails</li>
+      </ul>
+
+      <h4>Wednesday — Bays, mezzanines, and gym areas</h4>
+      <ul class="ck">
+        <li>Clean bay doors</li>
+        <li>Clean bay light fixtures, if needed</li>
+        <li>Dust and clean gear storage areas</li>
+        <li>Dust and clean gym equipment</li>
+      </ul>
+
+      <h4>Thursday — Apparatus</h4>
+      <ul class="ck">
+        <li>Remove all equipment from cabs and wipe down all interior surfaces</li>
+        <li>Treat vinyl surfaces as needed</li>
+        <li>Remove all equipment from compartments and wipe down all interior surfaces</li>
+        <li>Wipe down removed equipment</li>
+        <li>Repaint/re-mark tools as needed</li>
+        <li>Clean dunnage, hose beds, and bins</li>
+      </ul>
+
+      <h4>Friday — Restrooms and locker rooms</h4>
+      <ul class="ck">
+        <li>Scrub showers</li>
+        <li>Clean and organize locker rooms</li>
+        <li>Verify lactation rooms are not being used for storage</li>
+      </ul>
+    </div>
+    <div class="faqfoot">Reference copy of BFD's monthly maintenance schedule (policy 1100.3).</div>
+  </div>
+</div>
+
+<div class="sheetwrap" id="itcontactwrap" hidden>
+  <div class="isheet faq" role="dialog" aria-modal="true" aria-labelledby="itc-h">
+    <div class="faqhead">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="2" y="13" width="4" height="6" rx="1"/><rect x="18" y="13" width="4" height="6" rx="1"/>
+      </svg>
+      <h3 id="itc-h">IT Contact</h3>
+      <button id="itc-x" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="faqbody">
+      <h4>Working hours — Mon–Fri, 7:00 AM–5:00 PM</h4>
+      <div class="crow">
+        <div class="cinfo"><div class="cnm">IT Help Desk</div><div class="csub">x5813</div></div>
+        <a class="cdial" href="tel:+12814205813">Call</a>
+      </div>
+      <div class="crow">
+        <div class="cinfo"><div class="cnm">Email</div><div class="csub">its.trackit@baytown.org</div></div>
+        <a class="cdial" href="mailto:its.trackit@baytown.org">Email</a>
+      </div>
+      <p class="faqintro">Or submit a ticket — see <b>IT Ticket Center</b> under City Network.</p>
+
+      <h4>After hours — emergency support</h4>
+      <p class="faqintro">Call in order — move to the next number if there's no answer.</p>
+      <div class="crow">
+        <div class="cinfo"><div class="cnm">1. First call</div></div>
+        <a class="cdial" href="tel:+12814205801">x5801</a>
+      </div>
+      <div class="crow">
+        <div class="cinfo"><div class="cnm">2. If no answer</div><div class="csub">Leave a message; wait 10 min for a call back before the next number.</div></div>
+        <a class="cdial" href="tel:+12818396406">Call</a>
+      </div>
+      <div class="crow">
+        <div class="cinfo"><div class="cnm">3. ITS Director</div></div>
+        <a class="cdial" href="tel:+12817390429">Call</a>
+      </div>
+    </div>
+    <div class="faqfoot">Reference copy of BFD's IT contact sheet.</div>
   </div>
 </div>
 
@@ -1265,6 +1407,7 @@ function tileHTML(it){
   const tileAcc = ` style="--acc:${tileAccent(it.name)}"`;
   const soonAttr = it.comingSoon ? ` data-comingsoon="${esc(it.name)}"` : '';
   const manningAttr = it.manningLive ? ' data-manning="1"' : '';
+  const infoAttr = it.info ? ` data-info="${esc(it.info)}"` : '';
   // The star sits OUTSIDE the anchor so it is a real button, not a link
   // nested inside a link.
   // A literal \n in links.js's name forces a line break at that exact spot
@@ -1273,7 +1416,7 @@ function tileHTML(it){
   // tile's natural wrap — normal wrapping/clamping already handles anything
   // else, including names with no \n at all.
   return `<div class="tilewrap">
-    <a class="tile${net}${soon}" href="${esc(href)}"${ext}${sch}${it.intranet ? ' data-intranet="1"' : ''}${soonAttr}${manningAttr}${tileAcc}>
+    <a class="tile${net}${soon}" href="${esc(href)}"${ext}${sch}${it.intranet ? ' data-intranet="1"' : ''}${soonAttr}${manningAttr}${infoAttr}${tileAcc}>
       <span class="nm"><span class="nmtxt">${esc(it.name).replace(/\n/g, '<br>')}</span></span>
       ${badges ? `<span class="tags">${badges}</span>` : ''}
       <span class="ds">${esc(it.desc || '')}</span>
@@ -1388,10 +1531,11 @@ document.getElementById('clr').onclick = () => { q.value = ''; render(); q.focus
    paste it on a city computer.
 
    No tile currently carries more than one of data-intranet/-comingsoon/
-   -manning/-scheme at once, but if that ever changes: every one of these
-   four click listeners is on `document`, so plain stopPropagation() would
-   NOT stop a sibling listener on the same target from also firing — only
-   stopImmediatePropagation() does, which is what all four actually use. */
+   -manning/-scheme/-info at once, but if that ever changes: every one of
+   these five click listeners is on `document`, so plain stopPropagation()
+   would NOT stop a sibling listener on the same target from also firing —
+   only stopImmediatePropagation() does, which is what all five actually
+   use (the info-sheet one lives further down, near INFO_SHEETS). */
 document.addEventListener('click', e => {
   const a = e.target.closest('a.tile[data-intranet]');
   if (!a) return;
@@ -1558,11 +1702,45 @@ function closeFaq(){ faqWrap.hidden = true; }
 document.getElementById('infobtn').onclick = openFaq;
 document.getElementById('faq-x').onclick   = closeFaq;
 faqWrap.onclick = e => { if (e.target === faqWrap) closeFaq(); };   // backdrop tap
+
+/* ---------- info sheets (Monthly Maintenance, IT Contact) ----------
+   Generic by design -- a links.js entry with `info:"id"` opens whichever
+   wrap INFO_SHEETS maps that id to, same normal dismissible-sheet
+   behavior as everything else here (unlike #payreminderwrap, which is
+   deliberately NOT in this pattern). */
+const INFO_SHEETS = { maintenance: 'maintenancewrap', itcontact: 'itcontactwrap' };
+function openInfoSheet(id){
+  const wrap = document.getElementById(INFO_SHEETS[id]);
+  if (!wrap) return;
+  wrap.hidden = false;
+  wrap.querySelector('.faqbody').scrollTop = 0;
+}
+function closeInfoSheet(id){
+  const wrap = document.getElementById(INFO_SHEETS[id]);
+  if (wrap) wrap.hidden = true;
+}
+Object.keys(INFO_SHEETS).forEach(id => {
+  const wrap = document.getElementById(INFO_SHEETS[id]);
+  wrap.querySelector('.faqhead button').onclick = () => closeInfoSheet(id);
+  wrap.onclick = e => { if (e.target === wrap) closeInfoSheet(id); };
+});
+document.addEventListener('click', e => {
+  const a = e.target.closest('a.tile[data-info]');
+  if (!a) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  openInfoSheet(a.dataset.info);
+});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !faqWrap.hidden) closeFaq();
   if (e.key === 'Escape' && !document.getElementById('soonwrap').hidden) document.getElementById('soonwrap').hidden = true;
   if (e.key === 'Escape' && !document.getElementById('manningwrap').hidden) document.getElementById('manningwrap').hidden = true;
   if (e.key === 'Escape' && !shiftPickWrap.hidden) closeShiftPick();
+  Object.keys(INFO_SHEETS).forEach(id => {
+    const wrap = document.getElementById(INFO_SHEETS[id]);
+    if (e.key === 'Escape' && !wrap.hidden) closeInfoSheet(id);
+  });
   // #payreminderwrap deliberately has no Escape handling -- see its markup.
 });
 

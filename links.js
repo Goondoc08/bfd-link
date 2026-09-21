@@ -42,6 +42,14 @@
                        popup instead of navigating (there's nowhere to send
                        anyone yet). Use for a link BFD hasn't supplied — url
                        can be a placeholder ("#") since it's never followed.
+     info: "id"     -> on tap, opens an in-app info sheet instead of
+                       navigating — for reference content that lives in the
+                       app itself, not a link anywhere. "id" must match one
+                       of INFO_SHEETS in index.html (currently "maintenance",
+                       "itcontact"); url can be a placeholder ("#") since
+                       it's never followed. Adding a new one means adding
+                       both the sheet markup and an INFO_SHEETS entry in
+                       index.html, not just a links.js change.
      storeOnMobile: true -> on the narrow/phone layout, opens the App Store /
                        Play Store listing (needs ios/android set) with a
                        "Store" badge — same as a normal store:true tile. On
@@ -170,6 +178,23 @@ const LINKS = [
         name: "Vector Solutions",
         desc: "Training platform (TargetSolutions)",
         url: "https://app.targetsolutions.com/auth/index.cfm?action=login.showlogin&customerid=37425&customerpath=baytownfd"
+      },
+      {
+        // Added Sep 21 2026. No iOS app found/listed for BloodCOMM — url
+        // (the website) is what an iPhone falls back to via urlFor()'s own
+        // logic, same as any tile missing an `ios` field. Revisit if an
+        // iOS app ever turns up.
+        name: "BloodCOMM",
+        desc: "Blood product communication",
+        url: "https://blood.dev/",
+        android: "https://play.google.com/store/apps/details?id=com.deltadevteam.APRU",
+        app: true, store: true
+      },
+      {
+        // Added Sep 21 2026.
+        name: "ImageTrend",
+        desc: "ImageTrend Elite",
+        url: "https://amgh.imagetrendelite.com/Elite/Organizationamgh/"
       }
     ]
   },
@@ -205,6 +230,12 @@ const LINKS = [
         name: "C-Shift Calendar",
         desc: "C shift calendar",
         url: "https://docs.google.com/spreadsheets/d/1bQJVVSzopOkdGwcfR2GpsH_g4mxg73uQTZJt6jqaTeI/edit?gid=0#gid=0"
+      },
+      {
+        // Added Sep 21 2026.
+        name: "Room Assignments",
+        desc: "Station room assignments (Bryx)",
+        url: "https://dispatch.bryx911.com/stations"
       }
     ]
   },
@@ -234,12 +265,25 @@ const LINKS = [
         name: "Radio Repair",
         desc: "Radio repair request form",
         url: "https://docs.google.com/forms/d/12-ATvOFS9bIMRmHwGgTx7ArX04fB4cz0dChjH7n1BNI/viewform?edit_requested=true"
+      },
+      {
+        // Built Sep 21 2026 — an in-app info sheet, not a link (see the
+        // `info` flag docs at the top of this file). Content sourced from
+        // BFD's "Monthly Maintenance" PDF (policy 1100.3), left out of the
+        // visible title per the user's request.
+        name: "Monthly Maintenance",
+        desc: "First full week of the month, by day",
+        url: "#",
+        info: "maintenance"
+      },
+      {
+        // Built Sep 21 2026 — an in-app info sheet. Content sourced from
+        // BFD's "IT Contact" PDF.
+        name: "IT Contact",
+        desc: "IT help desk hours & after-hours escalation",
+        url: "#",
+        info: "itcontact"
       }
-
-      /* Monthly Maintenance (policy 1100.3) becomes an in-app page in Phase 2,
-         not a link — it'll be added as:
-      ,{ name: "Monthly Maintenance", desc: "1100.3 — first full week", url: "maintenance.html" }
-      */
     ]
   },
 
@@ -289,6 +333,12 @@ const LINKS = [
         name: "TDSHS",
         desc: "Texas DSHS EMS certification",
         url: "https://vo.ras.dshs.state.tx.us/datamart/login.do"
+      },
+      {
+        // Added Sep 21 2026.
+        name: "TDEM Training",
+        desc: "Texas Division of Emergency Management",
+        url: "https://tdem.geniussis.com/PublicWelcome.aspx"
       }
     ]
   },
@@ -459,6 +509,12 @@ const LINKS = [
         android: "https://play.google.com/store/apps/details?id=gov.noaa.cameochemical",
         ios: "https://apps.apple.com/us/app/id1151912682",
         app: true, store: true
+      },
+      {
+        // Added Sep 21 2026.
+        name: "NERIS Dictionary",
+        desc: "NFIRS successor — national data dictionary",
+        url: "https://neris.fsri.org/data-dictionary"
       }
     ]
   },
@@ -516,14 +572,15 @@ const LINKS = [
         intranet: true
       },
       {
-        // Still pending (Aug 12) — no URL yet. Guessing it lives at
-        // coblf12app like its neighbors above, but not shipping a guess.
-        // Once it exists, add the real url AND intranet:true (it'll behave
-        // like the rest of this section — copy, not navigate).
+        // Real URL confirmed Sep 21 2026 (replaces the comingSoon
+        // placeholder). Note from the user: ordering is closed right now,
+        // so this may not do much until it reopens after Oct 1 2026 — still
+        // ships as a normal intranet tile since that's a temporary
+        // ordering-window issue, not a reason to hide the link itself.
         name: "Uniform Request",
         desc: "Uniform request form",
-        url: "#",
-        comingSoon: true
+        url: "https://coblf11app/Forms/H36dP",
+        intranet: true
       }
     ]
   }
